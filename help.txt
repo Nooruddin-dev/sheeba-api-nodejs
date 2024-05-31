@@ -1,0 +1,26 @@
+
+# How to run the code in chrome dev tool for debugging purpose.
+
+Step: 1
+Open your terminal and run the following command:
+node --inspect-brk -r ts-node/register src/server.ts
+
+Step: 2
+Open the Chrome browser and Open Chrome DevTools. 
+Go to chrome://inspect.
+
+Additional Tips:
+Source Maps: Ensure your TypeScript configuration (tsconfig.json) has source maps enabled. This allows you to debug the original TypeScript code.
+{
+  "compilerOptions": {
+    "sourceMap": true,
+    ...
+  }
+}
+
+============================================================= End ===================================================
+
+# How to simply run without debuging:
+run command: ts-node src/server.ts in the terminal
+
+============================================================= End ===================================================
