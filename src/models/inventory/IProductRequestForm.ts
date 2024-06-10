@@ -1,11 +1,13 @@
 export interface IProductRequestForm {
-    productId?: number;
-    productName: string;
-    shortDescription?: string;
+    productid?: number;
+    product_name: string;
+    short_description?: string;
     sku: string;
-    stockQuantity: number;
-    isActive: boolean;
+    stockquantity: number;
+    is_active: boolean;
     price?: number;
+    unit_id: number;
+    size: number;
 
   
     createByUserId?: number;

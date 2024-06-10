@@ -120,3 +120,49 @@ export async function dynamicDataUpdateService(
         }
     }
 }
+
+
+export async function dynamicDataGetService(
+    tableName: string,
+    primaryKeyName: string,
+    primaryKeyValue: string | number | any
+): Promise<ServiceResponseInterface> {
+    // Create connection to the database
+    const connection = await connectionPool.getConnection();
+
+    try {
+        let response: ServiceResponseInterface = {
+            success: false,
+            responseMessage: '',
+            primaryKeyValue: null
+        };
+
+        // Construct the select query
+        const selectQuery = `SELECT * FROM ${tableName} WHERE ${primaryKeyName} = '${primaryKeyValue}' LIMIT 1`;
+
+        // Log the query for readability
+        console.log('Executing query:', selectQuery);
+        console.log('With primary key value:', primaryKeyValue);
+
+        // Execute the select query
+        const [rows]: any = await connection.execute(selectQuery);
+
+        if (rows.length > 0) {
+            response.success = true;
+            response.primaryKeyValue = primaryKeyValue;
+            response.responseMessage = 'Retrieved Successfully!';
+            response.data = rows[0]; // Assuming you want to return the first row as data
+        } else {
+            response.responseMessage = 'No rows found!';
+        }
+
+        return response;
+    } catch (error: any) {
+        console.error('Error:', error);
+        throw error;
+    } finally {
+        if (connection) {
+            await connection.release();
+        }
+    }
+}

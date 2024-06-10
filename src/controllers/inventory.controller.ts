@@ -29,7 +29,7 @@ class InventoryController {
             };
 
 
-            if (stringIsNullOrWhiteSpace(model.productName) || stringIsNullOrWhiteSpace(model.sku)) {
+            if (stringIsNullOrWhiteSpace(model.product_name) || stringIsNullOrWhiteSpace(model.sku)) {
                 responseBody.responseMessage = 'Please fill all required fields';
                 res.status(200).json({ Response: responseBody });
                 return;
@@ -38,10 +38,10 @@ class InventoryController {
 
 
 
+debugger
+            if (model.productid == undefined || model.productid == null || model.productid < 1) {
 
-            if (model.productId == undefined || model.productId == null || model.productId < 1) {
-
-                if (stringIsNullOrWhiteSpace(model.stockQuantity) || model.stockQuantity < 0) {
+                if (stringIsNullOrWhiteSpace(model.stockquantity) || model.stockquantity < 0) {
                     responseBody.responseMessage = 'Please define stock quantity!';
                     res.status(200).json({ Response: responseBody });
                     return;
@@ -78,7 +78,7 @@ class InventoryController {
 
 
 
-        const { productId, productName, sku, pageNo = 1, pageSize = 10 } = req.query;
+        const { productid, product_name, sku, pageNo = 1, pageSize = 10 } = req.query;
 
         try {
             const busnPartnerIdHeader = getBusnPartnerIdFromApiHeader(req);
@@ -86,8 +86,8 @@ class InventoryController {
             const formData = {
                 pageNo: pageNo ?? 1,
                 pageSize: pageSize ?? 10,
-                productId: productId ? productId : 0,
-                productName: productName || '',
+                productid: productid ? productid : 0,
+                product_name: product_name || '',
                 sku: sku || ''
             };
 
@@ -95,6 +95,142 @@ class InventoryController {
 
             const result = await this.inventoryService.getAllProductsService(formData);
 
+            if (!result) {
+                res.status(404).json({ message: 'Not Found' });
+            } else {
+                res.status(200).json(result);
+            }
+        } catch (err: any) {
+
+            res.status(500).json({ message: 'Error fetching users', error: err.message });
+        }
+
+
+    }
+
+
+    public getProductsListBySearchTermApi = async (req: Request, res: Response): Promise<void> => {
+
+        
+
+        const searchQueryProduct = req.params.searchQueryProduct
+        if(stringIsNullOrWhiteSpace(searchQueryProduct) == true){
+            res.status(404).json({ message: 'Please provide a search term' });
+        }
+
+
+
+        try {
+            const busnPartnerIdHeader = getBusnPartnerIdFromApiHeader(req);
+
+            const formData = {
+                pageNo: 1,
+                pageSize: 50,
+                searchQueryProduct: searchQueryProduct || '',
+               
+            };
+
+    
+
+            const result = await this.inventoryService.getProductsListBySearchTermService(formData);
+
+            if (!result) {
+                res.status(404).json({ message: 'Not Found' });
+            } else {
+                res.status(200).json(result);
+            }
+        } catch (err: any) {
+
+            res.status(500).json({ message: 'Error fetching users', error: err.message });
+        }
+
+
+    }
+
+    public getProductDetailById = async (req: Request, res: Response): Promise<void> => {
+
+        const productidParam = req.params.productid;
+        if(stringIsNullOrWhiteSpace(productidParam) == true){
+            res.status(404).json({ message: 'Please provide a product id' });
+        }
+
+        let productid = parseInt(productidParam, 10);
+        if(isNaN(productid)){
+            productid = 0;
+        }
+
+        
+        try {
+            const busnPartnerIdHeader = getBusnPartnerIdFromApiHeader(req);
+
+
+            const result = await this.inventoryService.getProductDetailByIdApi(productid);
+
+            if (!result) {
+                res.status(404).json({ message: 'Not Found' });
+            } else {
+                res.status(200).json(result);
+            }
+        } catch (err: any) {
+
+            res.status(500).json({ message: 'Error fetching users', error: err.message });
+        }
+
+
+    }
+
+
+    public getTaxRules = async (req: Request, res: Response): Promise<void> => {
+
+
+
+
+
+        const { tax_rule_id, tax_rule_type, pageNo = 1, pageSize = 10 } = req.query;
+
+        try {
+            const busnPartnerIdHeader = getBusnPartnerIdFromApiHeader(req);
+
+            const formData = {
+                pageNo: pageNo ?? 1,
+                pageSize: pageSize ?? 10,
+                tax_rule_id: tax_rule_id ? tax_rule_id : 0,
+                tax_rule_type: tax_rule_type || '',
+               
+            };
+
+      
+
+            const result = await this.inventoryService.getTaxRulesService(formData);
+
+            if (!result) {
+                res.status(404).json({ message: 'Not Found' });
+            } else {
+                res.status(200).json(result);
+            }
+        } catch (err: any) {
+
+            res.status(500).json({ message: 'Error fetching users', error: err.message });
+        }
+
+
+    }
+
+
+    public getUnitsList = async (req: Request, res: Response): Promise<void> => {
+
+
+        const {  pageNo = 1, pageSize = 10 } = req.query;
+
+        try {
+            const busnPartnerIdHeader = getBusnPartnerIdFromApiHeader(req);
+
+            const formData = {
+                pageNo: pageNo ?? 1,
+                pageSize: pageSize ?? 10,
+            };
+
+            const result = await this.inventoryService.getUnitsListService(formData);
             if (!result) {
                 res.status(404).json({ message: 'Not Found' });
             } else {

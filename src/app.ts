@@ -4,6 +4,7 @@ import userRoutes from './routes/user.routes';
 import { camelCaseResponseKeys } from './middlewares/camelCaseResponse';
 import inventoryRoutes from './routes/inventory.routes';
 import machinesRoutes from './routes/machines.routes';
+import ordersRoutes from './routes/orders.routes';
 
 const cors = require('cors');
 
@@ -28,5 +29,6 @@ app.use(camelCaseResponseKeys);
 app.use(`/api/${api_version}/users`, userRoutes);
 app.use(`/api/${api_version}/inventory`, inventoryRoutes);
 app.use(`/api/${api_version}/machines`, machinesRoutes);
+app.use(`/api/${api_version}/orders`, ordersRoutes);
 
 export default app;
