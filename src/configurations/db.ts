@@ -15,15 +15,15 @@ const connectionPool = mysql.createPool({
   // database: process.env.DB_NAME,
 
 
-  // host: 'localhost',
-  // user: 'root',
-  // password: '123456',
-  // database: 'sheba_inventory_sys_db',
+  host: 'localhost',
+  user: 'root',
+  password: '123456',
+  database: 'sheba_inventory_sys_db',
 
-  host: 'MYSQL8010.site4now.net',
-  user: 'a8d14f_sheeba',
-  password: '786358Sheeba#',
-  database: 'db_a8d14f_sheeba',
+  // host: 'MYSQL8010.site4now.net',
+  // user: 'a8d14f_sheeba',
+  // password: '786358Sheeba#',
+  // database: 'db_a8d14f_sheeba',
 });
 
 export default connectionPool;
