@@ -36,6 +36,12 @@ class OrdersController {
                 return;
             }
 
+            if (stringIsNullOrWhiteSpace(model.order_tax_status) || model.order_tax_status < 0) {
+                responseBody.responseMessage = 'Order tax status is required.';
+                res.status(200).json({ Response: responseBody });
+                return;
+            }
+
 
             if(model.cartAllProducts == undefined || model.cartAllProducts == null || model.cartAllProducts?.length < 1){
                 responseBody.responseMessage = 'Please select at least one product!';
@@ -44,7 +50,7 @@ class OrdersController {
             }
 
 
-          
+            
 
 
             const busnPartnerIdHeader = getBusnPartnerIdFromApiHeader(req);

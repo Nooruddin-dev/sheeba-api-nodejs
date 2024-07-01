@@ -3,7 +3,7 @@ import { ServiceResponseInterface } from '../models/common/ServiceResponseInterf
 import { dynamicDataGetService, dynamicDataInsertService, dynamicDataUpdateService } from './dynamic.service';
 import InventoryService from './inventory.service';
 import { IPurchaseOrderRequestForm } from '../models/orders/IPurchaseOrderRequestForm';
-import connectionPool from '../configurations/db';
+import { connectionPool, withConnectionDatabase } from '../configurations/db';
 import { stringIsNullOrWhiteSpace } from '../utils/commonHelpers/ValidationHelper';
 import { calculateItemAmount } from '../utils/commonHelpers/OrderHelper';
 
@@ -19,12 +19,7 @@ class OrdersService {
 
     public async getPurchaseOrderTaxesByOrderId(orderId: any): Promise<any> {
 
-        const connection = await connectionPool.getConnection();
-
-        try {
-
-
-
+        return withConnectionDatabase(async (connection: any) => {
             const [results]: any = await connection.query(`
                 SELECT MTBL.*
                 FROM order_taxes MTBL
@@ -38,23 +33,9 @@ class OrdersService {
                 return finalData;
             }
 
+        });
 
-        } catch (error) {
-            console.error('Error:', error);
-            throw error;
-        } finally {
-            if (connection) {
-                try {
-                    if (typeof connection.release === 'function') {
-                        await connection.release();
-                    } else if (typeof connection.end === 'function') {
-                        await connection.end();
-                    }
-                } catch (releaseError) {
-                    console.error('Error releasing or ending connection:', releaseError);
-                }
-            }
-        }
+
     }
 
     public async createPurchaseOrderService(formData: IPurchaseOrderRequestForm): Promise<ServiceResponseInterface> {
@@ -88,6 +69,7 @@ class OrdersService {
                 purchaser_name: formData.purchaser_name,
                 payment_terms: formData.payment_terms,
                 remarks: formData.remarks,
+                order_tax_status: formData.order_tax_status, //-- Taxable, Non-taxable
                 // order_tax_total: formData.orderLevelTaxAmount,
                 order_total: formData.orderTotal,
 
@@ -122,7 +104,7 @@ class OrdersService {
                         if (productDetail && productDetail?.data && productDetail?.data?.productid > 0) {
 
                             let po_rate: number = element.price;
-                     
+
                             const columnsPurchaseOrderItem: any = {
                                 purchase_order_id: order_id,
                                 item_name: productDetail?.data?.product_name,
@@ -134,8 +116,13 @@ class OrdersService {
                                 unit: productDetail?.data?.unit_id,
                                 po_rate: po_rate,
                                 amount: calculateItemAmount(po_rate, element.quantity),
+
+
                                 tax_percent: element.itemTaxPercent,
+
+                                tax_rate_type: element.tax_rate_type,
                                 tax_amount: element.itemTotalTax,
+
                                 item_total: element.itemTotal
                             }
                             var responseOrderItem = await dynamicDataInsertService(purchaseOrderItemsTableMainData.tableName, purchaseOrderItemsTableMainData.primaryKeyName,
@@ -145,33 +132,31 @@ class OrdersService {
 
 
                             //--update item inventory by reducing the quanity of product here
-                            const columnsProduct: any = {
-                                stockquantity: parseInt(productDetail.data.stockquantity) - parseInt(element.quantity?.toString() ?? '0'),
-                                updated_on: new Date(),
-                                updated_by: formData.createByUserId,
+                            // const columnsProduct: any = {
+                            //     stockquantity: parseInt(productDetail.data.stockquantity) - parseInt(element.quantity?.toString() ?? '0'),
+                            //     updated_on: new Date(),
+                            //     updated_by: formData.createByUserId,
 
-                            };
+                            // };
 
-                            var responseProduct = await dynamicDataUpdateService('products', 'productid', element.productid, columnsProduct);
+                            // var responseProduct = await dynamicDataUpdateService('products', 'productid', element.productid, columnsProduct);
+
+
 
                             //--update order item tax if any
-                            if (element.product_tax_rule_id && element.product_tax_rule_id > 0) {
-                                var taxRuleDetail = await dynamicDataGetService('tax_rules', 'tax_rule_id', element.product_tax_rule_id);
-                                if (taxRuleDetail && taxRuleDetail.data.tax_rule_id) {
-                                    const columnsOrderItemTax: any = {
-                                        purchase_order_id: order_id,
-                                        line_item_id: responseOrderItem.primaryKeyValue,
-                                        tax_rule_id: taxRuleDetail.data.tax_rule_id,
-                                        order_tax_amount: element.itemTotalTax,
-                                        order_tax_rate_at_order_time: taxRuleDetail.data.tax_rate,
-                                        created_on: new Date(),
-                                        created_by: formData.createByUserId,
+                            if (element.tax_rate_type != undefined && element.tax_rate_type != null && stringIsNullOrWhiteSpace(element.tax_rate_type) == false) {
+                                const columnsOrderItemTax: any = {
+                                    purchase_order_id: order_id,
+                                    line_item_id: responseOrderItem.primaryKeyValue,
+                                    tax_rate_type: element.tax_rate_type,
+                                    tax_value: element.tax_value,
+                                    order_tax_amount: element.itemTotalTax,
+                                    created_on: new Date(),
+                                    created_by: formData.createByUserId,
 
-                                    };
-                                    var responseOrderTAx = await dynamicDataInsertService('order_taxes', 'order_tax_id',
-                                        null, true, columnsOrderItemTax);
-
-                                }
+                                };
+                                var responseOrderTAx = await dynamicDataInsertService('order_taxes', 'order_tax_id',
+                                    null, true, columnsOrderItemTax);
                             }
 
                         }
@@ -180,24 +165,21 @@ class OrdersService {
 
                 }
 
+
                 //--update order item tax if any
-                if (formData.orderLevelTaxRuleId && formData.orderLevelTaxRuleId > 0 && (formData.orderLevelTaxAmount && formData.orderLevelTaxAmount > 0)) {
-                    const taxRuleDetailOrderDetail = await dynamicDataGetService('tax_rules', 'tax_rule_id', formData.orderLevelTaxRuleId);
-                    if (taxRuleDetailOrderDetail && taxRuleDetailOrderDetail.data.tax_rule_id) {
-                        const columnsOrderItemTax: any = {
-                            purchase_order_id: order_id,
-                            line_item_id: null,
-                            tax_rule_id: taxRuleDetailOrderDetail.data.tax_rule_id,
-                            order_tax_amount: formData.orderLevelTaxAmount,
-                            order_tax_rate_at_order_time: taxRuleDetailOrderDetail.data.tax_rate,
-                            created_on: new Date(),
-                            created_by: formData.createByUserId,
+                if (formData.orderLevelTaxRateType && !stringIsNullOrWhiteSpace(formData.orderLevelTaxRateType) && (formData.orderLevelTaxAmount && formData.orderLevelTaxAmount > 0)) {
+                    const columnsOrderItemTax: any = {
+                        purchase_order_id: order_id,
+                        line_item_id: null,
+                        tax_rate_type: formData.orderLevelTaxRateType,
+                        tax_value: formData.orderLevelTaxValue,
+                        order_tax_amount: formData.orderLevelTaxAmount,
+                        created_on: new Date(),
+                        created_by: formData.createByUserId,
 
-                        };
-                        const responseOrderTAx = await dynamicDataInsertService('order_taxes', 'order_tax_id',
-                            null, true, columnsOrderItemTax);
-
-                    }
+                    };
+                    const responseOrderTAx = await dynamicDataInsertService('order_taxes', 'order_tax_id',
+                        null, true, columnsOrderItemTax);
                 }
 
 
@@ -209,7 +191,7 @@ class OrdersService {
                 }
 
                 //--update purchase order 'po_number
-                const poNumber = order_id?.toString().padStart(7, '0');
+                const poNumber = 'PO' + order_id?.toString().padStart(7, '0');
                 const columnsOrderUpdate: any = {
                     po_number: poNumber,
                     order_tax_total: totalTaxOfOrder,
@@ -233,12 +215,7 @@ class OrdersService {
 
     public async getAllPurchaseOrdersListService(FormData: any): Promise<any> {
 
-        const connection = await connectionPool.getConnection();
-
-        try {
-
-
-
+        return withConnectionDatabase(async (connection: any) => {
             let searchParameters = '';
 
             if (FormData.purchase_order_id > 0) {
@@ -273,27 +250,15 @@ class OrdersService {
             const finalData: any = results;
             return finalData;
 
-        } catch (error) {
-            console.error('Error:', error);
-            throw error;
-        } finally {
-            if (connection) {
-                await connection.release();
-            }
-        }
+        });
+
+
     }
-
-
 
     public async getPurchaseOrderDetailById(purchase_order_id: any): Promise<any> {
 
-        const connection = await connectionPool.getConnection();
-
-        try {
-
-
-
-          let orderMain: any = {};
+        return withConnectionDatabase(async (connection: any) => {
+            let orderMain: any = {};
 
 
             const [resultsOrderMain]: any = await connection.query(`
@@ -306,9 +271,9 @@ class OrdersService {
                 inner join busnpartner sale_repres_user on sale_repres_user.BusnPartnerId = mtbl.sale_representative_id
                 WHERE MTBL.purchase_order_id = ${purchase_order_id} `);
 
-                debugger
+
             if (resultsOrderMain && resultsOrderMain.length > 0) {
-                 orderMain =  resultsOrderMain[0];
+                orderMain = resultsOrderMain[0];
 
                 const [resultsOrderItem]: any = await connection.query(`
                     SELECT 
@@ -323,14 +288,9 @@ class OrdersService {
 
             return orderMain;
 
-        } catch (error) {
-            console.error('Error:', error);
-            throw error;
-        } finally {
-            if (connection) {
-                await connection.release();
-            }
-        }
+        });
+
+
     }
 
 

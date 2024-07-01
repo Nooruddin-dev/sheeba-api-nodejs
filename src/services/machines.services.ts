@@ -1,7 +1,7 @@
 import { Pool } from 'mysql2/promise';
 
 import { UserEntity } from '../models/user.model';
-import connectionPool from '../configurations/db';
+import { connectionPool, withConnectionDatabase } from '../configurations/db';
 import { busnPartnerAddressAssociationModel } from '../models/usersManagement/busnPartnerAddressAssociationModel';
 import { busnPartnerPhoneAssociationModel } from '../models/usersManagement/busnPartnerPhoneAssociationModel';
 import { IBusnPartnerRequestForm } from '../models/usersManagement/Forms/IBusnPartnerRequestForm';
@@ -16,30 +16,22 @@ class MachinesService {
 
     public async getMachinesTypesService(FormData: any): Promise<any> {
 
-        const connection = await connectionPool.getConnection();
-
-        try {
-
+        return withConnectionDatabase(async (connection: any) => {
 
             const [rows]: any = await connection.query(`
-            SELECT COUNT(*) OVER () as TotalRecords, 
-            MTBL.*
-            FROM machine_types MTBL
-            ORDER BY MTBL.machine_type_id ASC
-            LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
-        `);
+                SELECT COUNT(*) OVER () as TotalRecords, 
+                MTBL.*
+                FROM machine_types MTBL
+                ORDER BY MTBL.machine_type_id ASC
+                LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
+            `);
 
             const results: any = rows;
             return results;
 
-        } catch (error) {
-            console.error('Error:', error);
-            throw error;
-        } finally {
-            if (connection) {
-                connection.end();
-            }
-        }
+        });
+
+
     }
 
 
@@ -103,33 +95,21 @@ class MachinesService {
 
 
     public async getMachineDetailsByMachineNameService(machine_name: string): Promise<any> {
-        const connection = await connectionPool.getConnection();
-        let result: any = [];
 
-        try {
+        return withConnectionDatabase(async (connection: any) => {
+            let result: any = [];
 
             const [rows]: any = await connection.query(`SELECT * FROM machines WHERE machine_name = '${machine_name}' `);
             result = rows ? rows[0] : null;
             return result;
 
-        } catch (error) {
-            console.error('Error:', error);
-            throw error;
-        } finally {
-            if (connection) {
-                connection.end();
-            }
-        }
+        });
+
     }
 
     public async getAllMachineService(FormData: any): Promise<any> {
 
-        const connection = await connectionPool.getConnection();
-
-        try {
-
-
-
+        return withConnectionDatabase(async (connection: any) => {
             let searchParameters = '';
 
             if (FormData.machine_id > 0) {
@@ -156,14 +136,9 @@ class MachinesService {
             const userData: any = results;
             return userData;
 
-        } catch (error) {
-            console.error('Error:', error);
-            throw error;
-        } finally {
-            if (connection) {
-                connection.release();
-            }
-        }
+        });
+
+
     }
 
 

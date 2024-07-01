@@ -1,7 +1,7 @@
 import { Pool } from 'mysql2/promise';
 
 import { UserEntity } from '../models/user.model';
-import connectionPool from '../configurations/db';
+import { connectionPool, withConnectionDatabase } from '../configurations/db';
 import { busnPartnerAddressAssociationModel } from '../models/usersManagement/busnPartnerAddressAssociationModel';
 import { busnPartnerPhoneAssociationModel } from '../models/usersManagement/busnPartnerPhoneAssociationModel';
 import { IBusnPartnerRequestForm } from '../models/usersManagement/Forms/IBusnPartnerRequestForm';
@@ -11,10 +11,9 @@ class UserService {
 
 
   public async getUser(userId: string): Promise<any> {
-    const connection = await connectionPool.getConnection();
 
+    return withConnectionDatabase(async (connection: any) => {
 
-    try {
       const [results] = await connection.query(
         'SELECT * FROM users WHERE id = ?',
         [userId]
@@ -24,23 +23,16 @@ class UserService {
 
       return userData.length === 1 ? userData[0] : null;
 
-    } catch (error) {
-      console.error('Error fetching user:', error);
-      throw error; // Re-throw for proper error handling
-    } finally {
-      connection.release();
-    }
+    });
+
+
 
 
   }
 
   public async getUserLogin(UserName: string, Password: string): Promise<UserEntity | null> {
 
-    const connection = await connectionPool.getConnection();
-
-    try {
-
-
+    return withConnectionDatabase(async (connection: any) => {
       const [results]: any = await connection.query(
         `SELECT USR.*, ATC.AttachmentURL AS ProfilePictureUrl
         FROM BusnPartner USR
@@ -54,22 +46,15 @@ class UserService {
       const userData: UserEntity = results[0];
       return userData;
 
-    } catch (error) {
-      console.error('Error fetching user:', error);
-      throw error; // Re-throw for proper error handling
-    } finally {
-      connection.release();
-    }
+    });
 
 
 
   }
+
   public async getBusinessPartnersService(FormData: any): Promise<any> {
 
-    const connection = await connectionPool.getConnection();
-
-    try {
-
+    return withConnectionDatabase(async (connection: any) => {
       let searchParameters = '';
 
       if (FormData.busnPartnerTypeId > 0) {
@@ -109,86 +94,68 @@ class UserService {
       const userData: any = results;
       return userData;
 
-    } catch (error) {
-      console.error('Error:', error);
-      throw error;
-    } finally {
-      if (connection) {
-        connection.end();
-      }
-    }
+    });
+
+
   }
 
   public async getBusinessPartnerAddressAssociationService(busnPartnerId: number): Promise<busnPartnerAddressAssociationModel[]> {
-    const connection = await connectionPool.getConnection();
 
-    let result: busnPartnerAddressAssociationModel[] = [];
+    return withConnectionDatabase(async (connection: any) => {
+      let result: busnPartnerAddressAssociationModel[] = [];
 
-    try {
       const [rows] = await connection.query(`
-            SELECT MTBL.*, BPAT.AddressTypeName
-            FROM BusnPartnerAddressAssociation MTBL
-            LEFT JOIN BusnPartnerAddressType BPAT ON BPAT.AddressTypeId = MTBL.AddressTypeId
-            WHERE MTBL.BusnPartnerId = ${busnPartnerId}
-        `);
+        SELECT MTBL.*, BPAT.AddressTypeName
+        FROM BusnPartnerAddressAssociation MTBL
+        LEFT JOIN BusnPartnerAddressType BPAT ON BPAT.AddressTypeId = MTBL.AddressTypeId
+        WHERE MTBL.BusnPartnerId = ${busnPartnerId}
+    `);
 
       result = rows as busnPartnerAddressAssociationModel[];
       return result;
-    } catch (error) {
-      console.error('Error:', error);
-      throw error;
-    } finally {
-      if (connection) {
-        connection.end();
-      }
-    }
+
+    });
+
+
+
   }
 
   public async getBusinessPartnerPhonesAssociationService(busnPartnerId: number): Promise<busnPartnerPhoneAssociationModel[]> {
-    const connection = await connectionPool.getConnection();
-    let result: busnPartnerPhoneAssociationModel[] = [];
 
-    try {
+    return withConnectionDatabase(async (connection: any) => {
+      let result: busnPartnerPhoneAssociationModel[] = [];
       const [rows] = await connection.query(`
-            SELECT MTBL.*, BPPT.PhoneTypeName
-            FROM BusnPartnerPhoneAssociation MTBL
-            LEFT JOIN BusnPartnerPhoneType BPPT ON BPPT.PhoneTypeId = MTBL.PhoneTypeId
-            WHERE MTBL.BusnPartnerId =  ${busnPartnerId}`);
+        SELECT MTBL.*, BPPT.PhoneTypeName
+        FROM BusnPartnerPhoneAssociation MTBL
+        LEFT JOIN BusnPartnerPhoneType BPPT ON BPPT.PhoneTypeId = MTBL.PhoneTypeId
+        WHERE MTBL.BusnPartnerId =  ${busnPartnerId}`);
 
       result = rows as busnPartnerPhoneAssociationModel[];
       return result;
-    } catch (error) {
-      console.error('Error:', error);
-      throw error;
-    } finally {
-      if (connection) {
-        connection.end();
-      }
-    }
+    });
+
+
+
+
   }
 
 
   public async getBusinessPartnerByEmailService(emailAddress: string): Promise<any> {
-    const connection = await connectionPool.getConnection();
-    let result: any = [];
 
-    try {
+
+    return withConnectionDatabase(async (connection: any) => {
+      let result: any = [];
 
       const [rows]: any = await connection.query(`SELECT * FROM busnpartner WHERE EmailAddress = '${emailAddress}' `);
       result = rows ? rows[0] : null;
       return result;
 
-    } catch (error) {
-      console.error('Error:', error);
-      throw error;
-    } finally {
-      if (connection) {
-        connection.end();
-      }
-    }
+    });
+
+
   }
 
-  public async  insertUpdateBusnPartnerservice(formData: IBusnPartnerRequestForm): Promise<ServiceResponseInterface> {
+  public async insertUpdateBusnPartnerservice(formData: IBusnPartnerRequestForm): Promise<ServiceResponseInterface> {
     const response: ServiceResponseInterface = {
       success: false,
       responseMessage: '',
@@ -196,13 +163,13 @@ class UserService {
     };
 
     const connection = await connectionPool.getConnection();
-  
+
     try {
 
-    const [rows, fields]: any = await connection.execute(`CALL SP_CreateUpdateBusnPartner(${formData.busnPartnerId}, ${formData.busnPartnerTypeId}, '${formData.firstName}', '${formData.lastName}', '${formData.emailAddress}', ${formData.isActive}, ${formData.countryId}, '${formData.addressOne}', '${formData.phoneNo}', '${formData.password}', ${formData.profilePictureId}, ${formData.createByUserId}, ${formData.saleRepresentativeVendorId ?? 0})`
-    
-    );
-  
+      const [rows, fields]: any = await connection.execute(`CALL SP_CreateUpdateBusnPartner(${formData.busnPartnerId}, ${formData.busnPartnerTypeId}, '${formData.firstName}', '${formData.lastName}', '${formData.emailAddress}', ${formData.isActive}, ${formData.countryId}, '${formData.addressOne}', '${formData.phoneNo}', '${formData.password}', ${formData.profilePictureId}, ${formData.createByUserId}, ${formData.saleRepresentativeVendorId ?? 0})`
+
+      );
+
       if (rows && rows[0]) {
         const affectedRowId = rows[0][0].BusnPartnerId;
         response.primaryKeyValue = formData.busnPartnerId || affectedRowId;
@@ -212,70 +179,55 @@ class UserService {
     } catch (error) {
       console.error('Error executing stored procedure:', error);
       throw error;
-    }finally {
+    } finally {
       if (connection) {
         //connection.end();
         connection.release();
       }
     }
-  
+
     return response;
   }
 
   public async getBusinessPartnerTypesService(FormData: any): Promise<any> {
 
-    const connection = await connectionPool.getConnection();
-
-    try {
-
-
+    return withConnectionDatabase(async (connection: any) => {
       const [rows]: any = await connection.query(`
-            SELECT COUNT(*) OVER () as TotalRecords, 
-            MTBL.*
-            FROM BusnPartnerType MTBL
-            WHERE MTBL.BusnPartnerTypeId IS NOT NULL
-            ORDER BY MTBL.BusnPartnerTypeId DESC
-            LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
-        `);
+        SELECT COUNT(*) OVER () as TotalRecords, 
+        MTBL.*
+        FROM BusnPartnerType MTBL
+        WHERE MTBL.BusnPartnerTypeId IS NOT NULL
+        ORDER BY MTBL.BusnPartnerTypeId DESC
+        LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
+    `);
 
       const results: any = rows;
       return results;
 
-    } catch (error) {
-      console.error('Error:', error);
-      throw error;
-    } finally {
-      if (connection) {
-        connection.end();
-      }
-    }
+    });
+
+
   }
 
   public async getSaleRepresentativeDetailOfBusinessPartnerService(busnPartnerId: number): Promise<any> {
-    const connection = await connectionPool.getConnection();
 
-    let result: any= [];
 
-    try {
+    return withConnectionDatabase(async (connection: any) => {
+      let result: any = [];
       const [rows]: any = await connection.query(`
-            SELECT MTBL.*, BP.FirstName AS representativeFirstName, BP.LastName AS representativeLastName, VENDOR.FirstName AS vendorFirstName, VENDOR.LastName AS vendorLastName
-            FROM sales_representative_details MTBL
-            INNER JOIN busnpartner BP ON BP.BusnPartnerId = MTBL.business_partner_id
-            INNER JOIN busnpartner VENDOR ON VENDOR.BusnPartnerId = MTBL.vendor_id
-            WHERE MTBL.business_partner_id = ${busnPartnerId}
-        `);
+        SELECT MTBL.*, BP.FirstName AS representativeFirstName, BP.LastName AS representativeLastName, VENDOR.FirstName AS vendorFirstName, VENDOR.LastName AS vendorLastName
+        FROM sales_representative_details MTBL
+        INNER JOIN busnpartner BP ON BP.BusnPartnerId = MTBL.business_partner_id
+        INNER JOIN busnpartner VENDOR ON VENDOR.BusnPartnerId = MTBL.vendor_id
+        WHERE MTBL.business_partner_id = ${busnPartnerId}
+    `);
 
       result = rows[0];
       return result;
 
-    } catch (error) {
-      console.error('Error:', error);
-      throw error;
-    } finally {
-      if (connection) {
-        connection.end();
-      }
-    }
+    });
+
+
   }
 
 

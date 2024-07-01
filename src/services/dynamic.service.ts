@@ -1,20 +1,16 @@
-import connectionPool from "../configurations/db";
+import { connectionPool, withConnectionDatabase } from "../configurations/db";
 import { ServiceResponseInterface } from "../models/common/ServiceResponseInterface";
 import { ColumnValueDynamic, InsertUpdateDynamicColumnMap } from "../models/dynamic/InsertUpdateDynamicColumnMap";
 
-export  async function dynamicDataInsertService(
+export async function dynamicDataInsertService(
     tableName: string,
     primaryKeyName: string,
     primaryKeyValue: number | string | null,
     isAutoIncremented: boolean,
     columns: InsertUpdateDynamicColumnMap
 ): Promise<ServiceResponseInterface> {
-    // Create connection to the database
-    const connection = await connectionPool.getConnection();
 
-    try {
-        
-
+    return withConnectionDatabase(async (connection: any) => {
         let response: ServiceResponseInterface = {
             success: false,
             responseMessage: '',
@@ -54,15 +50,8 @@ export  async function dynamicDataInsertService(
         response.responseMessage = 'Saved Successfully!'
         return response;
 
-    } catch (error: any) {
-        console.error('Error:', error);
-        throw error;
-    } finally {
-        if (connection) {
-            await connection.release();
-        }
+    });
 
-    }
 }
 
 export async function dynamicDataUpdateService(
@@ -71,11 +60,8 @@ export async function dynamicDataUpdateService(
     primaryKeyValue: string | number,
     columnsToUpdate: InsertUpdateDynamicColumnMap
 ): Promise<ServiceResponseInterface> {
-    // Create connection to the database
-    const connection = await connectionPool.getConnection();
 
-    
-    try {
+    return withConnectionDatabase(async (connection: any) => {
         let response: ServiceResponseInterface = {
             success: false,
             responseMessage: '',
@@ -111,14 +97,10 @@ export async function dynamicDataUpdateService(
         }
 
         return response;
-    } catch (error: any) {
-        console.error('Error:', error);
-        throw error;
-    } finally {
-        if (connection) {
-            await connection.release();
-        }
-    }
+
+    });
+
+
 }
 
 
@@ -127,10 +109,9 @@ export async function dynamicDataGetService(
     primaryKeyName: string,
     primaryKeyValue: string | number | any
 ): Promise<ServiceResponseInterface> {
-    // Create connection to the database
-    const connection = await connectionPool.getConnection();
 
-    try {
+
+    return withConnectionDatabase(async (connection: any) => {
         let response: ServiceResponseInterface = {
             success: false,
             responseMessage: '',
@@ -157,12 +138,48 @@ export async function dynamicDataGetService(
         }
 
         return response;
-    } catch (error: any) {
-        console.error('Error:', error);
-        throw error;
-    } finally {
-        if (connection) {
-            await connection.release();
+
+    });
+
+}
+
+//--get record by any column from any table
+export async function dynamicDataGetByAnyColumnService(
+    tableName: string,
+    columnName: string,
+    columnValue: string | number | any
+): Promise<ServiceResponseInterface> {
+    
+    
+    return withConnectionDatabase(async (connection: any) => {
+        let response: ServiceResponseInterface = {
+            success: false,
+            responseMessage: '',
+            primaryKeyValue: null
+        };
+
+        // Construct the select query
+        const selectQuery = `SELECT * FROM ${tableName} WHERE ${columnName} = '${columnValue}' LIMIT 100`;
+
+        // Log the query for readability
+        console.log('Executing query:', selectQuery);
+        console.log('With primary key value:', columnValue);
+
+        // Execute the select query
+        const [rows]: any = await connection.execute(selectQuery);
+
+        if (rows.length > 0) {
+            response.success = true;
+            response.primaryKeyValue = columnValue;
+            response.responseMessage = 'Retrieved Successfully!';
+            response.data = rows;
+        } else {
+            response.responseMessage = 'No rows found!';
         }
-    }
+
+        return response;
+ 
+    });
+
+    
 }

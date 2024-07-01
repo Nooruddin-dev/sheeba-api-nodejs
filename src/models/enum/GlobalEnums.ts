@@ -6,5 +6,12 @@ export const BusinessPartnerTypesEnum : any = {
     SalesRepresentative: 5
   };
 
+  export enum UnitTypesEnum {
+    Liquid_Solvent = '1',
+    Granules = '2',
+    Roll = '3',
+  }
+  
+
 
 

@@ -1,3 +1,13 @@
+
+ interface IUnitSubTypeRoll {
+    unit_sub_type: string;
+    unit_id?: number;
+    unit_value: string;
+    unit_type?: number; 
+    unit_type_name: string;
+}
+
+
 export interface IProductRequestForm {
     productid?: number;
     product_name: string;
@@ -6,9 +16,10 @@ export interface IProductRequestForm {
     stockquantity: number;
     is_active: boolean;
     price?: number;
-    unit_id: number;
-    size: number;
 
+    unit_type?: number;
+
+    unitSubTypesRoll?: IUnitSubTypeRoll[],
   
     createByUserId?: number;
 

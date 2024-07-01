@@ -5,6 +5,8 @@ interface ICartProduct {
     product_tax_rule_id: number;
     itemTaxPercent: number;
     itemTotalTax: number;
+    tax_value?: number;
+    tax_rate_type?: any
     itemTotal: number;
 }
 
@@ -18,10 +20,13 @@ export interface IPurchaseOrderRequestForm {
     purchaser_name: string;
     payment_terms: string;
     remarks: string;
+    order_tax_status: number;
     cartAllProducts: ICartProduct[];
     orderTotal: number;
-    orderLevelTaxRuleId: number;
-    orderLevelTaxAmount: number;
+
+    orderLevelTaxRateType?: number;
+    orderLevelTaxValue?: number;
+    orderLevelTaxAmount?: number;
 
     createByUserId?: number;
 }

@@ -1,14 +1,19 @@
 import { Pool } from 'mysql2/promise';
-import connectionPool from '../configurations/db';
+import { connectionPool, withConnectionDatabase } from '../configurations/db';
 import { IProductRequestForm } from '../models/inventory/IProductRequestForm';
 import { ServiceResponseInterface } from '../models/common/ServiceResponseInterface';
 import { InsertUpdateDynamicColumnMap } from '../models/dynamic/InsertUpdateDynamicColumnMap';
-import { dynamicDataInsertService, dynamicDataUpdateService } from './dynamic.service';
+import { dynamicDataGetByAnyColumnService, dynamicDataInsertService, dynamicDataUpdateService } from './dynamic.service';
 import { stringIsNullOrWhiteSpace } from '../utils/commonHelpers/ValidationHelper';
 
 class InventoryService {
 
     public async insertUpdateProductService(formData: IProductRequestForm): Promise<ServiceResponseInterface> {
+
+
+
+
+
 
         let response: ServiceResponseInterface = {
             success: false,
@@ -19,7 +24,7 @@ class InventoryService {
         try {
 
 
-            debugger
+
             const tableName = 'Products';
             const primaryKeyName = 'productid';
 
@@ -33,8 +38,7 @@ class InventoryService {
                     stockquantity: formData.stockquantity,
                     is_active: formData.is_active == true || formData?.is_active?.toString() == 'true' || formData?.is_active?.toString() == '1' ? 1 : 0,
                     price: formData.price,
-                    unit_id: formData.unit_id,
-                    size: formData.size,
+
                     updated_on: new Date(),
                     updated_by: formData.createByUserId,
 
@@ -57,8 +61,8 @@ class InventoryService {
                     stockquantity: formData.stockquantity,
                     is_active: formData.is_active == true || formData?.is_active?.toString() == 'true' || formData?.is_active?.toString() == '1' ? 1 : 0,
                     price: formData.price,
-                    unit_id: formData.unit_id,
-                    size: formData.size,
+                    unit_type: formData.unit_type,
+
                     created_on: new Date(),
                     created_by: formData.createByUserId,
                     is_bound_to_stock_quantity: false,
@@ -66,7 +70,32 @@ class InventoryService {
 
                 };
 
+
                 response = await dynamicDataInsertService(tableName, primaryKeyName, primaryKeyValue, isAutoIncremented, columns);
+
+                if (response && response.primaryKeyValue) {
+                    const insertedProductId = response.primaryKeyValue;
+
+                    if (formData.unitSubTypesRoll && formData.unitSubTypesRoll.length > 0) {
+
+                        for (const element of formData.unitSubTypesRoll) {
+
+                            const columnsUnitSubTypesRollItem: any = {
+                                productid: insertedProductId,
+                                unit_type: element.unit_type,
+                                unit_sub_type: element.unit_sub_type,
+                                unit_id: element.unit_id,
+                                unit_value: stringIsNullOrWhiteSpace(element.unit_value) ? null : parseInt(element.unit_value ?? 0),
+                                created_on: new Date(),
+                                created_by: formData.createByUserId
+                            }
+                            var responseUnitsItem = await dynamicDataInsertService("inventory_units_info", "product_unit_info_id", null, true, columnsUnitSubTypesRollItem);
+
+
+                        }
+
+                    }
+                }
 
             }
 
@@ -82,12 +111,7 @@ class InventoryService {
 
     public async getAllProductsService(FormData: any): Promise<any> {
 
-        const connection = await connectionPool.getConnection();
-
-        try {
-
-
-
+        return withConnectionDatabase(async (connection: any) => {
             let searchParameters = '';
 
             if (FormData.productid > 0) {
@@ -114,25 +138,26 @@ class InventoryService {
                 LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
             `);
 
+            if (results && results.length > 0) {
+                //--get inventory_units_info      
+                for (const element of results) {
+                    var inventoryUnitsInfo = await dynamicDataGetByAnyColumnService('inventory_units_info', 'productid', element.productid);
+                    element.inventory_units_info = inventoryUnitsInfo?.data;
+                }
+            }
+
             const finalData: any = results;
             return finalData;
 
-        } catch (error) {
-            console.error('Error:', error);
-            throw error;
-        } finally {
-            if (connection) {
-                connection.release();
-            }
-        }
+        });
+
+
+
     }
 
     public async getProductsListBySearchTermService(FormData: any): Promise<any> {
 
-        const connection = await connectionPool.getConnection();
-
-        try {
-
+        return withConnectionDatabase(async (connection: any) => {
 
             const searchQueryProduct = FormData?.searchQueryProduct;
             let searchParameters = '';
@@ -165,25 +190,14 @@ class InventoryService {
 
             const finalData: any = results;
             return finalData;
+        });
 
-        } catch (error) {
-            console.error('Error:', error);
-            throw error;
-        } finally {
-            if (connection) {
-                connection.release();
-            }
-        }
+
     }
 
     public async getProductDetailByIdApi(productid: number): Promise<any> {
 
-        const connection = await connectionPool.getConnection();
-
-        try {
-
-
-
+        return withConnectionDatabase(async (connection: any) => {
             const [results]: any = await connection.query(`
                 SELECT MTBL.*
                 FROM PRODUCTS MTBL
@@ -197,26 +211,14 @@ class InventoryService {
                 return finalData;
             }
 
+        });
 
-        } catch (error) {
-            console.error('Error:', error);
-            throw error;
-        } finally {
-            if (connection) {
-                connection.release();
-            }
-        }
     }
 
 
     public async getTaxRulesService(FormData: any): Promise<any> {
 
-        const connection = await connectionPool.getConnection();
-
-        try {
-
-
-
+        return withConnectionDatabase(async (connection: any) => {
             let searchParameters = '';
 
             if (FormData.machine_id > 0) {
@@ -226,8 +228,6 @@ class InventoryService {
             if (stringIsNullOrWhiteSpace(FormData.tax_rule_type) == false) {
                 searchParameters += ` AND mtbl.tax_rule_type LIKE '%${FormData.tax_rule_type}%' `;
             }
-
-
 
             const [results]: any = await connection.query(`
                 SELECT COUNT(*) OVER () as totalRecords, mtbl.*, tc.category_name
@@ -242,22 +242,15 @@ class InventoryService {
             const userData: any = results;
             return userData;
 
-        } catch (error) {
-            console.error('Error:', error);
-            throw error;
-        } finally {
-            if (connection) {
-                connection.release();
-            }
-        }
+
+        });
+
+
     }
 
     public async getUnitsListService(FormData: any): Promise<any> {
 
-        const connection = await connectionPool.getConnection();
-
-        try {
-
+        return withConnectionDatabase(async (connection: any) => {
             const [results]: any = await connection.query(`
                 SELECT COUNT(*) OVER () as totalRecords, mtbl.*
                 FROM units mtbl
@@ -269,14 +262,9 @@ class InventoryService {
             const userData: any = results;
             return userData;
 
-        } catch (error) {
-            console.error('Error:', error);
-            throw error;
-        } finally {
-            if (connection) {
-                connection.release();
-            }
-        }
+        });
+
+
     }
 
 }
