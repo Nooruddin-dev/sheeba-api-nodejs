@@ -6,6 +6,8 @@ import { IPurchaseOrderRequestForm } from '../models/orders/IPurchaseOrderReques
 import { connectionPool, withConnectionDatabase } from '../configurations/db';
 import { stringIsNullOrWhiteSpace } from '../utils/commonHelpers/ValidationHelper';
 import { calculateItemAmount } from '../utils/commonHelpers/OrderHelper';
+import { PurchaseOrderStatusTypesEnum } from '../models/enum/GlobalEnums';
+import { IPurchaseOrderStatusUpdateRequestForm } from '../models/orders/IPurchaseOrderStatusUpdateRequestForm';
 
 
 class OrdersService {
@@ -27,6 +29,32 @@ class OrdersService {
 
             if (results) {
                 const finalData: any = results;
+                return finalData;
+            } else {
+                const finalData: any = [];
+                return finalData;
+            }
+
+        });
+
+
+    }
+
+
+    public async getPurchaseOrderLatestStatusService(orderId: any): Promise<any> {
+
+        return withConnectionDatabase(async (connection: any) => {
+
+            const [results]: any = await connection.query(`
+              SELECT ost.status_id, ost.purchase_order_id, OSTYPE.status_name
+               FROM purchase_order_status_mapping ost
+               LEFT JOIN purchase_order_status_types OSTYPE ON ost.status_id = OSTYPE.status_id
+               WHERE OST.is_active = 1 AND OST.purchase_order_id = ${orderId}
+               ORDER BY OST.order_status_mapping_id DESC
+               LIMIT 1;`);
+
+            if (results) {
+                const finalData: any = results[0];
                 return finalData;
             } else {
                 const finalData: any = [];
@@ -69,7 +97,7 @@ class OrdersService {
                 purchaser_name: formData.purchaser_name,
                 payment_terms: formData.payment_terms,
                 remarks: formData.remarks,
-                order_tax_status: formData.order_tax_status, //-- Taxable, Non-taxable
+                show_company_detail: formData.show_company_detail,
                 // order_tax_total: formData.orderLevelTaxAmount,
                 order_total: formData.orderTotal,
 
@@ -111,12 +139,13 @@ class OrdersService {
                                 product_id: element.productid,
                                 item_description: productDetail?.data?.short_description,
                                 code_sku: productDetail?.data?.sku,
-                                size: productDetail?.data?.size,
+
                                 quantity: element.quantity,
-                                unit: productDetail?.data?.unit_id,
+
                                 po_rate: po_rate,
                                 amount: calculateItemAmount(po_rate, element.quantity),
 
+                                item_units_info_json: element.product_units_info && element.product_units_info.length > 0 ? JSON.stringify(element.product_units_info) : null,
 
                                 tax_percent: element.itemTaxPercent,
 
@@ -202,6 +231,18 @@ class OrdersService {
                 var responseOrderMain = await dynamicDataUpdateService('purchase_orders', 'purchase_order_id', order_id, columnsOrderUpdate);
 
 
+                //--insert into order status mapping table "purchase_order_status_mapping"
+                const columnsOrderStatusMappings: any = {
+                    purchase_order_id: order_id,
+                    status_id: PurchaseOrderStatusTypesEnum.Pending,
+                    is_active: 1,
+                    created_on: new Date(),
+                    created_by: formData.createByUserId,
+                };
+                const responseOrderStatusMapping = await dynamicDataInsertService('purchase_order_status_mapping', 'order_status_mapping_id',
+                    null, true, columnsOrderStatusMappings);
+
+
             }
 
 
@@ -234,9 +275,10 @@ class OrdersService {
 
             const [results]: any = await connection.query(`
                 SELECT COUNT(*) OVER () as TotalRecords, 
-                MTBL.*,
+                MTBL.*,  
                 vendor.FirstName as vendor_first_name, vendor.LastName as vendor_last_name,
-                sale_repres_user.FirstName as sale_representative_first_name, sale_repres_user.LastName as sale_representative_last_name
+                sale_repres_user.FirstName as sale_representative_first_name, sale_repres_user.LastName as sale_representative_last_name,
+                 (SELECT COUNT(*) FROM grn_voucher gv WHERE gv.purchase_order_id = MTBL.purchase_order_id) as total_grn_vouchers
                 FROM purchase_orders MTBL
                 inner join busnpartner vendor on vendor.BusnPartnerId = mtbl.vendor_id
                 inner join busnpartner sale_repres_user on sale_repres_user.BusnPartnerId = mtbl.sale_representative_id
@@ -248,6 +290,19 @@ class OrdersService {
             `);
 
             const finalData: any = results;
+
+            //--get purchase order status mapping
+            if (finalData && finalData?.length > 0) {
+                for (var element of finalData) {
+                    //--get purchase order latest status info
+                    const purchaseOrderLatestStatus = await this.getPurchaseOrderLatestStatusService(element.purchase_order_id);
+                    if (purchaseOrderLatestStatus) {
+                        element.status_id = purchaseOrderLatestStatus?.status_id;
+                        element.status_name = purchaseOrderLatestStatus?.status_name;
+                    }
+                }
+            }
+
             return finalData;
 
         });
@@ -256,6 +311,56 @@ class OrdersService {
     }
 
     public async getPurchaseOrderDetailById(purchase_order_id: any): Promise<any> {
+
+        return withConnectionDatabase(async (connection: any) => {
+            let orderMain: any = {};
+
+
+            const [resultsOrderMain]: any = await connection.query(`
+                SELECT 
+                MTBL.*, 
+                vendor.FirstName as vendor_first_name, vendor.LastName as vendor_last_name,
+                sale_repres_user.FirstName as sale_representative_first_name, sale_repres_user.LastName as sale_representative_last_name
+                FROM purchase_orders MTBL
+                inner join busnpartner vendor on vendor.BusnPartnerId = mtbl.vendor_id
+                inner join busnpartner sale_repres_user on sale_repres_user.BusnPartnerId = mtbl.sale_representative_id
+                WHERE MTBL.purchase_order_id = ${purchase_order_id} `);
+
+
+            if (resultsOrderMain && resultsOrderMain.length > 0) {
+                orderMain = resultsOrderMain[0];
+
+
+                //--get purchase order latest status info
+                const purchaseOrderLatestStatus = await this.getPurchaseOrderLatestStatusService(orderMain.purchase_order_id);
+                if (purchaseOrderLatestStatus) {
+                    orderMain.status_id = purchaseOrderLatestStatus?.status_id;
+                    orderMain.status_name = purchaseOrderLatestStatus?.status_name;
+                }
+
+                //--get purchase order items
+                const [resultsOrderItem]: any = await connection.query(`
+                    SELECT 
+                    MTBL.*, prd.product_name as product_name
+                    FROM purchase_orders_items MTBL
+                    inner join products prd on prd.productid =  mtbl.product_id
+                    WHERE MTBL.purchase_order_id = ${orderMain.purchase_order_id} `);
+
+                const orderItem: any = resultsOrderItem;
+                orderMain.order_items = orderItem;
+
+
+
+            }
+
+            return orderMain;
+
+        });
+
+
+    }
+
+    public async getPurchaseOrderDetailForEditCloneByIdService(purchase_order_id: any): Promise<any> {
 
         return withConnectionDatabase(async (connection: any) => {
             let orderMain: any = {};
@@ -275,15 +380,25 @@ class OrdersService {
             if (resultsOrderMain && resultsOrderMain.length > 0) {
                 orderMain = resultsOrderMain[0];
 
+                //-- Get order items
                 const [resultsOrderItem]: any = await connection.query(`
                     SELECT 
-                    MTBL.*, prd.product_name as product_name
+                    MTBL.*, prd.product_name as product_name, prd.sku, prd.price , prd.stockquantity
                     FROM purchase_orders_items MTBL
                     inner join products prd on prd.productid =  mtbl.product_id
                     WHERE MTBL.purchase_order_id = ${orderMain.purchase_order_id} `);
-
                 const orderItem: any = resultsOrderItem;
                 orderMain.order_items = orderItem;
+
+                //--  Get order taxes info
+                const [resultsOrderTaxes]: any = await connection.query(`
+                    SELECT 
+                    MTBL.*
+                    FROM order_taxes MTBL
+                    WHERE MTBL.purchase_order_id = ${orderMain.purchase_order_id} `);
+                const orderTaxes: any = resultsOrderTaxes;
+                orderMain.order_taxes = orderTaxes;
+
             }
 
             return orderMain;
@@ -291,6 +406,83 @@ class OrdersService {
         });
 
 
+    }
+
+    public async updatePurchaseOrderStatusService(formData: IPurchaseOrderStatusUpdateRequestForm): Promise<ServiceResponseInterface> {
+
+        let response: ServiceResponseInterface = {
+            success: false,
+            responseMessage: '',
+            primaryKeyValue: null
+        };
+
+        try {
+
+
+            
+
+
+            //--First update existing order status mapping
+            var responePurchaseOrderUpdate = await withConnectionDatabase(async (connection: any) => {
+                let response: ServiceResponseInterface = {
+                    success: false,
+                    responseMessage: '',
+                    primaryKeyValue: null
+                };
+
+                
+                // Execute the update query
+                const [result]: any = await connection.execute(`UPDATE purchase_order_status_mapping
+                      SET is_active = 0 where purchase_order_id = ${formData.purchase_order_id};`);
+
+                if (result.affectedRows > 0) {
+                    response.success = true;
+                    response.primaryKeyValue = formData.purchase_order_id;
+                    response.responseMessage = 'Updated Successfully!';
+
+
+
+                } else {
+                    response.responseMessage = 'No rows were updated!';
+                }
+
+                //--now insert new row for order status mapping
+                const columnsOrderStatusMapping: any = {
+                    purchase_order_id: formData.purchase_order_id,
+                    status_id: formData.status_id,
+                    is_active: 1,
+                    created_on: new Date(),
+                    created_by: formData.createByUserId,
+                };
+                response = await dynamicDataInsertService("purchase_order_status_mapping", "order_status_mapping_id", null, true, columnsOrderStatusMapping);
+
+
+
+                return response;
+
+            });
+
+            response = responePurchaseOrderUpdate;
+            
+
+            // //--now insert new row for order status mapping
+            // const columnsOrderStatusMapping: any = {
+            //     purchase_order_id: formData.purchase_order_id,
+            //     status_id: formData.status_id,
+            //     is_active: 1,
+            //     created_on: new Date(),
+            //     created_by: formData.createByUserId,
+            // };
+            // response = await dynamicDataInsertService("purchase_order_status_mapping", "order_status_mapping_id", null, true, columnsOrderStatusMapping);
+
+      
+
+        } catch (error) {
+            console.error('Error executing insert/update proudct details:', error);
+            throw error;
+        }
+
+        return response;
     }
 
 

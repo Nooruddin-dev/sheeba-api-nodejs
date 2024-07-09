@@ -205,6 +205,37 @@ class InventoryService {
 
             if (results) {
                 const finalData: any = results[0];
+                if (finalData) {
+                    //-- Get latest order item for a sepecific product
+                    const [resultLatestProductPurchaseOrder]: any = await connection.query(`
+                        SELECT MTBL.*
+                        FROM purchase_orders_items MTBL
+                        WHERE MTBL.product_id  = ${productid}
+                        ORDER BY MTBL.line_item_id DESC
+                        LIMIT 1; `);
+                    if (resultLatestProductPurchaseOrder) {
+                        finalData.product_latest_purchase_order_item = resultLatestProductPurchaseOrder[0];
+                    } else {
+                        finalData.product_latest_purchase_order_item = null
+                    }
+
+                    const [resultProductUnitInfo]: any = await connection.query(`
+                        select mtbl.product_unit_info_id, mtbl.productid, mtbl.unit_type, mtbl.unit_sub_type, mtbl.unit_id ,  mtbl.unit_value ,
+                        unt.unit_short_name  
+                        From inventory_units_info mtbl
+                        left join units unt on unt.unit_id = mtbl.unit_id
+                        WHERE mtbl.productid  = ${productid} ;
+                        `);
+
+                    if (resultProductUnitInfo) {
+                        finalData.product_units_info = resultProductUnitInfo;
+                    } else {
+                        finalData.product_units_info = null
+                    }
+
+
+
+                }
                 return finalData;
             } else {
                 const finalData: any = {};

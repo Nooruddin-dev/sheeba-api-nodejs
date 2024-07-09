@@ -6,6 +6,7 @@ import inventoryRoutes from './routes/inventory.routes';
 import machinesRoutes from './routes/machines.routes';
 import ordersRoutes from './routes/orders.routes';
 import voucherRoutes from './routes/voucher.routes';
+import jobCardRoutes from './routes/jobcard.routes';
 
 const cors = require('cors');
 
@@ -32,5 +33,6 @@ app.use(`/api/${api_version}/inventory`, inventoryRoutes);
 app.use(`/api/${api_version}/machines`, machinesRoutes);
 app.use(`/api/${api_version}/orders`, ordersRoutes);
 app.use(`/api/${api_version}/voucher`, voucherRoutes);
+app.use(`/api/${api_version}/jobcard`, jobCardRoutes);
 
 export default app;

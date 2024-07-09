@@ -2,6 +2,10 @@ interface ICartProduct {
     productid: number;
     quantity: number;
     price: number;
+
+    product_units_info: any;
+
+
     product_tax_rule_id: number;
     itemTaxPercent: number;
     itemTotalTax: number;
@@ -20,7 +24,7 @@ export interface IPurchaseOrderRequestForm {
     purchaser_name: string;
     payment_terms: string;
     remarks: string;
-    order_tax_status: number;
+    show_company_detail: boolean;
     cartAllProducts: ICartProduct[];
     orderTotal: number;
 
