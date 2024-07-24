@@ -1,5 +1,5 @@
 
- interface IUnitSubTypeRoll {
+ interface IUnitSubTypeAll {
     unit_sub_type: string;
     unit_id?: number;
     unit_value: string;
@@ -19,7 +19,7 @@ export interface IProductRequestForm {
 
     unit_type?: number;
 
-    unitSubTypesRoll?: IUnitSubTypeRoll[],
+    unitSubTypesAll?: IUnitSubTypeAll[],
   
     createByUserId?: number;
 

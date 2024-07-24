@@ -4,9 +4,9 @@ import { connectionPool, withConnectionDatabase } from '../configurations/db';
 import { stringIsNullOrWhiteSpace } from '../utils/commonHelpers/ValidationHelper';
 import { IGrnVoucherCreateRequestForm } from '../models/voucher/IGrnVoucherCreateRequestForm';
 import { ServiceResponseInterface } from '../models/common/ServiceResponseInterface';
-import { dynamicDataGetService, dynamicDataInsertService, dynamicDataUpdateService } from './dynamic.service';
+import { dynamicDataGetByAnyColumnService, dynamicDataGetService, dynamicDataInsertService, dynamicDataUpdateService } from './dynamic.service';
 import OrdersService from './orders.service';
-import { PurchaseOrderStatusTypesEnum } from '../models/enum/GlobalEnums';
+import { PurchaseOrderStatusTypesEnum, UnitTypesEnum } from '../models/enum/GlobalEnums';
 
 class VoucherServices {
 
@@ -195,15 +195,23 @@ class VoucherServices {
                                 grnVoucherLineItems.primaryKeyValue, grnVoucherLineItems.isAutoIncremented, columnGrnVoucherLineItem);
 
 
-
+                            let reel_quanity = 0;
+                            if (productDetail?.data?.unit_type == UnitTypesEnum.Roll) {
+                                reel_quanity = parseInt(productDetail.data.reel_quanity ?? '0') + parseInt(element.quantity?.toString() ?? '0');
+                            }
 
                             //--update item inventory by reducing the quanity of product here
                             const columnsProduct: any = {
-                                stockquantity: parseInt(productDetail.data.stockquantity) - parseInt(element.quantity?.toString() ?? '0'),
+                                stockquantity: parseInt(productDetail.data.stockquantity) + parseInt(element.quantity?.toString() ?? '0'),
+                                reel_quanity: reel_quanity,
                                 updated_on: new Date(),
                                 updated_by: formData.createByUserId,
 
                             };
+
+
+
+
                             var responseProduct = await dynamicDataUpdateService('products', 'productid', element.product_id, columnsProduct);
 
 

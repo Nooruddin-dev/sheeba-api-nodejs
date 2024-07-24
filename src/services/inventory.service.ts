@@ -76,9 +76,9 @@ class InventoryService {
                 if (response && response.primaryKeyValue) {
                     const insertedProductId = response.primaryKeyValue;
 
-                    if (formData.unitSubTypesRoll && formData.unitSubTypesRoll.length > 0) {
+                    if (formData.unitSubTypesAll && formData.unitSubTypesAll.length > 0) {
 
-                        for (const element of formData.unitSubTypesRoll) {
+                        for (const element of formData.unitSubTypesAll) {
 
                             const columnsUnitSubTypesRollItem: any = {
                                 productid: insertedProductId,
