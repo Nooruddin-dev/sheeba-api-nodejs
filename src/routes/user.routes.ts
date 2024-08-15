@@ -13,6 +13,7 @@ router.get('/get-all-business-partners', userController.getAllBusinessPartners);
 router.post('/get_login_user', userController.getUserLogin);
 router.post('/insert-update-business-partner', userController.insertUpdateBusinessPartner);
 router.get('/get-business-partner-types', userController.getBusinessPartnerTypes);
+router.post('/delete-any-record', userController.deleteAnyRecordApi);
 
 
 

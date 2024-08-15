@@ -1,4 +1,5 @@
 interface IJobCardProduct {
+    job_card_product_id?: number;
     job_card_id?: number;
     product_id: number;
     product_code: number;
@@ -7,19 +8,21 @@ interface IJobCardProduct {
 }
 
 export interface IJobCardRequestForm {
+    job_card_id?: number,
     order_date?: string; // Assuming date as string format
     dispatch_date?: string; // Assuming date as string format
     company_name?: string;
     product_name?: string;
     weight_qty?: number;
     job_size?: string;
-    materials?: string;
+
+    job_card_dispatch_info?: any;
+
     micron?: string;
     sealing_method?: string;
     job_card_reference?: string;
     special_request?: string;
-    dispatch_place?: string;
-    distribution?: string;
+
     card_rate?: number;
     card_amount?: number;
 

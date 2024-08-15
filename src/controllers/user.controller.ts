@@ -5,6 +5,8 @@ import { ServiceResponseInterface } from '../models/common/ServiceResponseInterf
 import { stringIsNullOrWhiteSpace } from '../utils/commonHelpers/ValidationHelper';
 import { IBusnPartnerRequestForm } from '../models/usersManagement/Forms/IBusnPartnerRequestForm';
 import { BusinessPartnerTypesEnum } from '../models/enum/GlobalEnums';
+import { IDeleteRecordRequestForm } from '../models/usersManagement/Forms/IDeleteRecordRequestForm';
+import { dynamicDataDeleteService } from '../services/dynamic.service';
 
 
 class UserController {
@@ -209,6 +211,37 @@ class UserController {
 
 
   }
+
+
+  public deleteAnyRecordApi = async (req: Request, res: Response) => {
+    try {
+
+      const model: IDeleteRecordRequestForm = req.body;
+
+      const responseBody: ServiceResponseInterface = {
+        success: false,
+        responseMessage: '',
+        primaryKeyValue: null
+      };
+
+
+      if (!model.entityName || !model.entityColumnName || !model.entityRowId) {
+        responseBody.responseMessage = 'Please fill all required fields';
+        res.status(200).json({ Response: responseBody });
+        return;
+      }
+
+
+    //  const response = await this.userService.insertUpdateBusnPartnerservice(model);
+      const response  = await  dynamicDataDeleteService(model.entityName, model.entityColumnName, model.entityRowId)
+
+      res.status(200).json({ Response: response });
+
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Error processing request', error });
+    }
+  };
 
 
 }

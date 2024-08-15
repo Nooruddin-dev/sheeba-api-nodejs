@@ -183,3 +183,42 @@ export async function dynamicDataGetByAnyColumnService(
 
     
 }
+
+
+// Delete any record
+export async function dynamicDataDeleteService(
+    entityName: string,
+    entityColumnName: string,
+    entityRowId: string | number
+): Promise<ServiceResponseInterface> {
+
+    return withConnectionDatabase(async (connection: any) => {
+        let response: ServiceResponseInterface = {
+            success: false,
+            responseMessage: '',
+            primaryKeyValue: null
+        };
+
+        // Construct the delete query
+        const deleteQuery = `DELETE FROM ${entityName} WHERE ${entityColumnName} = ?`;
+
+        // Log the query for readability
+        console.log('Executing query:', deleteQuery);
+        console.log('With primary key value:', entityRowId);
+
+        // Execute the delete query
+        const [result]: any = await connection.execute(deleteQuery, [entityRowId]);
+
+        if (result.affectedRows > 0) {
+            response.success = true;
+            response.primaryKeyValue = entityRowId;
+            response.responseMessage = 'Deleted Successfully!';
+        } else {
+            response.responseMessage = 'No rows were deleted!';
+        }
+
+        return response;
+
+    });
+
+}

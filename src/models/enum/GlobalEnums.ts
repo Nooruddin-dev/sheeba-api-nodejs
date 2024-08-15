@@ -18,6 +18,13 @@ export const BusinessPartnerTypesEnum : any = {
     Complete = 2,
     Cancel = 3,
   }
+
+  export enum ProductionEntriesTypesEnum {
+    NewProductEntry = "NewProductEntry",
+    NewGRN = "NewGRN",
+    NewProductionEntry = "NewProductionEntry",
+    EditProductionEntry = "EditProductionEntry",
+  }
   
 
 

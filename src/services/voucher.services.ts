@@ -6,7 +6,8 @@ import { IGrnVoucherCreateRequestForm } from '../models/voucher/IGrnVoucherCreat
 import { ServiceResponseInterface } from '../models/common/ServiceResponseInterface';
 import { dynamicDataGetByAnyColumnService, dynamicDataGetService, dynamicDataInsertService, dynamicDataUpdateService } from './dynamic.service';
 import OrdersService from './orders.service';
-import { PurchaseOrderStatusTypesEnum, UnitTypesEnum } from '../models/enum/GlobalEnums';
+import { ProductionEntriesTypesEnum, PurchaseOrderStatusTypesEnum, UnitTypesEnum } from '../models/enum/GlobalEnums';
+import { getProductQuantityFromLedger } from './common.service';
 
 class VoucherServices {
 
@@ -201,18 +202,41 @@ class VoucherServices {
                             }
 
                             //--update item inventory by reducing the quanity of product here
-                            const columnsProduct: any = {
-                                stockquantity: parseInt(productDetail.data.stockquantity) + parseInt(element.quantity?.toString() ?? '0'),
-                                reel_quanity: reel_quanity,
-                                updated_on: new Date(),
-                                updated_by: formData.createByUserId,
-
+                            const columnsLedger: any = {
+                                productid: element.product_id,
+                                foreign_key_table_name: 'grn_voucher',
+                                foreign_key_name: 'voucher_id',
+                                foreign_key_value: voucher_id,
+                                quantity: parseInt(element.quantity?.toString() ?? '0'),
+                                action_type: ProductionEntriesTypesEnum.NewGRN,
+        
+                                created_at: new Date(),
                             };
+                            const responseLedger = await dynamicDataInsertService('inventory_ledger', 'ledger_id', null, true, columnsLedger);
+                            if (responseLedger?.success == true) {
 
+                                //-- update product stock quantity
+                                const ledgerStockQuantity = await getProductQuantityFromLedger(element.product_id);
+                                if (ledgerStockQuantity && ledgerStockQuantity.total_quantity > 0) {
+                                    const columnsProducts: any = {
+                                        stockquantity: ledgerStockQuantity.total_quantity,
+                                        updated_on: new Date(),
+                                        updated_by: formData.createByUserId,
+        
+                                    };
+                                    var responseProduct = await dynamicDataUpdateService('products', 'productid', element.product_id, columnsProducts);
+                                }
+        
+                            }
 
+                            // const columnsProduct: any = {
+                            //     stockquantity: parseInt(productDetail.data.stockquantity) + parseInt(element.quantity?.toString() ?? '0'),
+                            //     reel_quanity: reel_quanity,
+                            //     updated_on: new Date(),
+                            //     updated_by: formData.createByUserId,
 
-
-                            var responseProduct = await dynamicDataUpdateService('products', 'productid', element.product_id, columnsProduct);
+                            // };
+                            // var responseProduct = await dynamicDataUpdateService('products', 'productid', element.product_id, columnsProduct);
 
 
                             //-- get purchase order line item by id

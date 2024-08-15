@@ -5,6 +5,7 @@ import { ServiceResponseInterface } from '../models/common/ServiceResponseInterf
 import { InsertUpdateDynamicColumnMap } from '../models/dynamic/InsertUpdateDynamicColumnMap';
 import { dynamicDataGetByAnyColumnService, dynamicDataInsertService, dynamicDataUpdateService } from './dynamic.service';
 import { stringIsNullOrWhiteSpace } from '../utils/commonHelpers/ValidationHelper';
+import { ProductionEntriesTypesEnum } from '../models/enum/GlobalEnums';
 
 class InventoryService {
 
@@ -95,6 +96,20 @@ class InventoryService {
                         }
 
                     }
+
+                    //--insert into ledger quantity
+                    const columnsLedger: any = {
+                        productid: insertedProductId,
+                        foreign_key_table_name: 'products',
+                        foreign_key_name: 'productid',
+                        foreign_key_value: insertedProductId,
+                        quantity: formData.stockquantity,
+                        action_type: ProductionEntriesTypesEnum.NewProductEntry,
+
+                        created_at: new Date(),
+                    };
+
+                    const responseLedger = await dynamicDataInsertService('inventory_ledger', 'ledger_id', null, true, columnsLedger);
                 }
 
             }
