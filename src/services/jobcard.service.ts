@@ -8,6 +8,7 @@ import { JobCardStatusEnum } from '../models/jobCardManagement/IJobCardStatus';
 import { IJobProductionEntryForm } from '../models/jobCardManagement/IJobProductionEntryForm';
 import { ProductionEntriesTypesEnum } from '../models/enum/GlobalEnums';
 import { getProductQuantityFromLedger } from './common.service';
+import { IJobCardDispatchInfoForm } from '../models/jobCardManagement/IJobCardDispatchInfoForm';
 
 
 
@@ -422,7 +423,7 @@ class JobCardService {
         try {
 
 
-            
+
 
             const tableName = 'job_production_entries';
             const primaryKeyName = 'production_entry_id';
@@ -526,7 +527,7 @@ class JobCardService {
                         foreign_key_table_name: 'job_production_entries',
                         foreign_key_name: 'production_entry_id',
                         foreign_key_value: response?.primaryKeyValue,
-                        quantity: parseInt(formData.gross_value ?? '0'),
+                        quantity: -parseInt(formData.gross_value ?? '0'),
                         action_type: ProductionEntriesTypesEnum.NewProductionEntry,
 
                         created_at: new Date(),
@@ -630,6 +631,180 @@ class JobCardService {
 
     }
 
+
+    public async insertCardDispatchInfoService(formData: IJobCardDispatchInfoForm): Promise<ServiceResponseInterface> {
+
+        let response: ServiceResponseInterface = {
+            success: false,
+            responseMessage: '',
+            primaryKeyValue: null
+        };
+
+        try {
+
+
+
+
+            const tableName = 'job_card_dispatch_data';
+            const primaryKeyName = 'card_dispatch_info_id';
+
+
+
+            const columns: any = {
+                job_card_id: formData.job_card_id,
+                item_name: formData.item_name,
+                total_bags: formData.total_bags,
+                quantity: formData.quantity,
+                core_value: formData.core_value,
+                gross_value: formData.gross_value,
+                net_weight: formData.net_weight,
+                grand_total: formData.grand_total,
+                card_tax_type: formData.card_tax_type,
+                card_tax_value: formData.card_tax_value,
+                show_company_detail: formData.show_company_detail,
+
+                created_on: new Date(),
+                created_by: formData.createByUserId,
+
+            };
+
+
+            response = await dynamicDataInsertService(tableName, primaryKeyName, null, true, columns);
+            if (response?.success == true) {
+                const card_dispatch_info_id: any = response?.primaryKeyValue;
+                const card_dispatch_no = 'DN' + response?.primaryKeyValue?.toString().padStart(7, '0');
+                const columnsDispatchUpdate: any = {
+                    card_dispatch_no: card_dispatch_no,
+                };
+                var responseCardDispatch = await dynamicDataUpdateService('job_card_dispatch_data', 'card_dispatch_info_id', card_dispatch_info_id, columnsDispatchUpdate);
+
+
+            }
+
+
+
+        } catch (error) {
+            console.error('Error executing insert/update proudct details:', error);
+            throw error;
+        }
+
+        return response;
+    }
+
+    public async getJobDispatchReportDataService(FormData: any): Promise<any> {
+
+        return withConnectionDatabase(async (connection: any) => {
+            let searchParameters = '';
+
+
+            if (stringIsNullOrWhiteSpace(FormData.job_card_id) == false) {
+                searchParameters += ` AND MTBL.job_card_id = '${FormData.job_card_id}' `;
+            }
+
+            if (stringIsNullOrWhiteSpace(FormData.fromDate) == false) {
+                searchParameters += ` AND MTBL.created_on >= '${FormData.fromDate}' `;
+            }
+
+            if (stringIsNullOrWhiteSpace(FormData.toDate) == false) {
+                searchParameters += ` AND MTBL.created_on <= '${FormData.toDate}' `;
+            }
+
+            
+
+            const [results]: any = await connection.query(`
+                SELECT COUNT(*) OVER () as TotalRecords, 
+                MTBL.*, JMSTR.job_card_no, JMSTR.created_on as job_date
+                FROM job_card_dispatch_data MTBL
+                inner join job_cards_master JMSTR on JMSTR.job_card_id =  mtbl.job_card_id
+              
+                WHERE MTBL.job_card_id IS NOT NULL
+                ${searchParameters}
+                
+                
+            `);
+
+            const finalData: any = results;
+            return finalData;
+
+        });
+
+
+    }
+
+
+    public async getJobDispatchReportDataByIdService(card_dispatch_info_id: any): Promise<any> {
+
+        return withConnectionDatabase(async (connection: any) => {
+
+            const [resultJobCardDispatchData]: any = await connection.query(`
+                SELECT 
+                MTBL.*, JMSTR.job_card_no, JMSTR.created_on as job_date
+                FROM job_card_dispatch_data MTBL
+                inner join job_cards_master JMSTR on JMSTR.job_card_id =  mtbl.job_card_id
+                 WHERE MTBL.card_dispatch_info_id = ${card_dispatch_info_id}
+                `);
+
+
+            if (resultJobCardDispatchData && resultJobCardDispatchData.length > 0) {
+                return resultJobCardDispatchData[0];
+            }else{
+                return null;
+            }
+
+        });
+
+
+    }
+
+    public async getMachineBaseReportService(FormData: any): Promise<any> {
+
+        return withConnectionDatabase(async (connection: any) => {
+            let searchParameters = '';
+
+
+            if (stringIsNullOrWhiteSpace(FormData.machineTypeId) == false && FormData.machineTypeId > 0) {
+                searchParameters += ` AND MCT.machine_type_id = '${FormData.machineTypeId}' `;
+            }
+
+            if (stringIsNullOrWhiteSpace(FormData.fromDate) == false) {
+                searchParameters += ` AND MTBL.created_on >= '${FormData.fromDate}' `;
+            }
+
+            if (stringIsNullOrWhiteSpace(FormData.toDate) == false) {
+                searchParameters += ` AND MTBL.created_on <= '${FormData.toDate}' `;
+            }
+
+            if (!stringIsNullOrWhiteSpace(FormData.commaSeparatedMachineIds)) {
+                searchParameters += ` AND MSN.machine_id IN (${FormData.commaSeparatedMachineIds}) `;
+            }
+         
+          
+
+            const [results]: any = await connection.query(`
+                SELECT MTBL.production_entry_id, MTBL.job_card_id, MTBL.machine_id, MTBL.job_card_product_id, MTBL.waste_value, MTBL.net_value, 
+                MTBL.gross_value, MTBL.created_on AS prod_entry_date, PRD.product_name as item_name, JCM.job_card_no, MCT.machine_type_name,
+                JCM.job_size
+                FROM job_production_entries MTBL
+                LEFT JOIN job_card_products JCP ON JCP.job_card_id = MTBL.job_card_id
+                LEFT JOIN PRODUCTS PRD ON PRD.productid = JCP.product_id
+                INNER JOIN job_cards_master JCM on JCM.job_card_id = MTBL.job_card_id
+                LEFT JOIN Machines MSN ON MTBL.machine_id = MSN.machine_id
+
+                INNER JOIN machine_types MCT on MCT.machine_type_id = MSN.machine_type_id
+              
+                WHERE MTBL.production_entry_id IS NOT NULL
+                ${searchParameters}
+                
+                
+            `);
+
+            const finalData: any = results;
+            return finalData;
+
+        });
+
+
+    }
 
 
 

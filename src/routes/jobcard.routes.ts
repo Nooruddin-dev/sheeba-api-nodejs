@@ -12,7 +12,10 @@ jobCardRoutes.get('/get-job-card-detail-by-id-for-edit/:job_card_id', jobCardCon
 jobCardRoutes.get('/get-job-cards-by-search-term-for-production-entry/:searchQueryProductEntry', jobCardController.gerProductionEntryListBySearchTermApi);
 jobCardRoutes.post('/insert-update-production-entry', jobCardController.insertUpdateProductionEntryApi);
 jobCardRoutes.get('/get-job-production-entries', jobCardController.getAllJobProductionEntriesApi);
-
+jobCardRoutes.post('/insert-card-dispatch-info', jobCardController.insertCardDispatchInfoApi);
+jobCardRoutes.get('/get-job-dispatch-report-data', jobCardController.getJobDispatchReportDataApi);
+jobCardRoutes.get('/get-job-dispatch-report-data-by-id/:card_dispatch_info_id', jobCardController.getJobDispatchReportDataByIdApi);
+jobCardRoutes.get('/get-machine-based-report-api', jobCardController.getMachineBaseReportApi);
 
 
 export default jobCardRoutes;

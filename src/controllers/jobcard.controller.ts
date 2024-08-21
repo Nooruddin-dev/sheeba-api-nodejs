@@ -6,6 +6,7 @@ import { stringIsNullOrWhiteSpace } from '../utils/commonHelpers/ValidationHelpe
 import { IJobCardRequestForm } from '../models/jobCardManagement/IJobCardRequestForm';
 import { ServiceResponseInterface } from '../models/common/ServiceResponseInterface';
 import { IJobProductionEntryForm } from '../models/jobCardManagement/IJobProductionEntryForm';
+import { IJobCardDispatchInfoForm } from '../models/jobCardManagement/IJobCardDispatchInfoForm';
 
 
 class JobCardController {
@@ -282,6 +283,139 @@ class JobCardController {
     }
 
 
+    public insertCardDispatchInfoApi = async (req: Request, res: Response) => {
+        try {
+
+
+
+            const model: IJobCardDispatchInfoForm = req.body;
+
+            const responseBody: ServiceResponseInterface = {
+                success: false,
+                responseMessage: '',
+                primaryKeyValue: null
+            };
+
+
+            if (stringIsNullOrWhiteSpace(model.item_name) || stringIsNullOrWhiteSpace(model.total_bags) || stringIsNullOrWhiteSpace(model.quantity)
+                || stringIsNullOrWhiteSpace(model.core_value) || stringIsNullOrWhiteSpace(model.gross_value) || stringIsNullOrWhiteSpace(model.net_weight)) {
+                    responseBody.responseMessage = 'Please fill all required fields';
+                    res.status(200).json({ Response: responseBody });
+                    return;
+            }
+    
+    
+            const busnPartnerIdHeader = getBusnPartnerIdFromApiHeader(req);
+            model.createByUserId = busnPartnerIdHeader;
+
+
+            const response = await this.jobCardService.insertCardDispatchInfoService(model);
+
+
+            res.status(200).json({ Response: response });
+
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ message: 'Error processing request', error });
+        }
+    };
+
+
+    public getJobDispatchReportDataApi = async (req: Request, res: Response): Promise<void> => {
+
+        const { job_card_id, fromDate, toDate, pageNo = 1, pageSize = 2000 } = req.query;
+      
+        try {
+            //const busnPartnerIdHeader = getBusnPartnerIdFromApiHeader(req);
+
+            const formData = {
+                pageNo: pageNo ?? 1,
+                pageSize: pageSize ?? 10,
+                job_card_id: job_card_id ? job_card_id : "",
+                fromDate: fromDate || '',
+                toDate: toDate || '',
+             
+            };
+
+            console.log('formData', formData);
+
+            const result = await this.jobCardService.getJobDispatchReportDataService(formData);
+
+            if (!result) {
+                res.status(404).json({ message: 'Not Found' });
+            } else {
+                res.status(200).json(result);
+            }
+        } catch (err: any) {
+
+            res.status(500).json({ message: 'Error fetching users', error: err.message });
+        }
+
+
+    }
+
+    public getJobDispatchReportDataByIdApi = async (req: Request, res: Response): Promise<void> => {
+
+        const card_dispatch_info_id_param = req.params.card_dispatch_info_id;
+        if (stringIsNullOrWhiteSpace(card_dispatch_info_id_param) == true) {
+            res.status(404).json({ message: 'Please provide a purchase order id' });
+        }
+
+        let card_dispatch_info_id = parseInt(card_dispatch_info_id_param, 10);
+        if (isNaN(card_dispatch_info_id)) {
+            card_dispatch_info_id = 0;
+        }
+
+
+        try {
+          //  const busnPartnerIdHeader = getBusnPartnerIdFromApiHeader(req);
+
+
+            const result = await this.jobCardService.getJobDispatchReportDataByIdService(card_dispatch_info_id);
+
+            if (!result) {
+                res.status(404).json({ message: 'Not Found' });
+            } else {
+                res.status(200).json(result);
+            }
+        } catch (err: any) {
+
+            res.status(500).json({ message: 'Error fetching users', error: err.message });
+        }
+
+
+    }
+
+
+    public getMachineBaseReportApi = async (req: Request, res: Response): Promise<void> => {
+        try {
+
+            const {fromDate, toDate, commaSeparatedMachineIds, machineTypeId, pageNo = 1, pageSize = 2000 } = req.query;
+            const formData = {
+                pageNo: pageNo ?? 1,
+                pageSize: pageSize ?? 2000,
+                fromDate: fromDate ? fromDate : "",
+                toDate: toDate || '',
+                commaSeparatedMachineIds: commaSeparatedMachineIds || '',
+                machineTypeId: machineTypeId || 0,
+             
+            };
+
+
+            const result = await this.jobCardService.getMachineBaseReportService(formData);
+
+            if (!result) {
+                res.status(404).json({ message: 'Not Found' });
+            } else {
+                res.status(200).json(result);
+            }
+        } catch (err: any) {
+
+            res.status(500).json({ message: 'Error fetching users', error: err.message });
+        }
+
+
+    }
 
 
 }
