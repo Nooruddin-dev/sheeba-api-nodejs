@@ -17,6 +17,9 @@ export interface IProductRequestForm {
     is_active: boolean;
     price?: number;
 
+    weight_unit_id?: number;
+    weight_value?: number;
+    
     unit_type?: number;
 
     unitSubTypesAll?: IUnitSubTypeAll[],

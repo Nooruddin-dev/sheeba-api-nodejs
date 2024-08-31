@@ -23,6 +23,23 @@ export async function getProductQuantityFromLedger(productId: number): Promise<a
         }
 
     });
+}
 
+export async function getProductWeightValueFromLedger(productId: number): Promise<any> {
 
+    return withConnectionDatabase(async (connection: any) => {
+     
+        const [results]: any = await connection.query(`
+            SELECT SUM(weight_quantity_value) AS total_weight_quantity
+            FROM inventory_ledger MTBL
+         
+            WHERE MTBL.productid = ${productId} 
+        `);
+
+        if (results?.length > 0) {
+            return results[0];
+        } else {
+            return null;
+        }
+    });
 }

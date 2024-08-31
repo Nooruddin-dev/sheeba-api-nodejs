@@ -7,6 +7,8 @@ export interface IJobProductionEntryForm {
     net_value?: number;
     gross_value?: string;
 
+    weight_value?: string;
+
 
     createByUserId?: number;
 }

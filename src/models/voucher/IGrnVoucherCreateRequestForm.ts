@@ -4,7 +4,10 @@ interface ICartGrnVoucherLineItems {
     product_id: number;
     order_line_item_id: number;
     product_sku_code: string;
+
     quantity: number;
+    weight_value: number;
+
     po_rate: number;
     amount: number;
  

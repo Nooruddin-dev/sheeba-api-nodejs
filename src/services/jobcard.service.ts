@@ -7,7 +7,7 @@ import { dynamicDataGetByAnyColumnService, dynamicDataGetService, dynamicDataIns
 import { JobCardStatusEnum } from '../models/jobCardManagement/IJobCardStatus';
 import { IJobProductionEntryForm } from '../models/jobCardManagement/IJobProductionEntryForm';
 import { ProductionEntriesTypesEnum } from '../models/enum/GlobalEnums';
-import { getProductQuantityFromLedger } from './common.service';
+import { getProductQuantityFromLedger, getProductWeightValueFromLedger } from './common.service';
 import { IJobCardDispatchInfoForm } from '../models/jobCardManagement/IJobCardDispatchInfoForm';
 
 
@@ -437,7 +437,7 @@ class JobCardService {
                 //-- get production entry detail by id before update
                 const jobProductionEntryDetailBeforeUpdate = await dynamicDataGetService('job_production_entries', 'production_entry_id', formData.production_entry_id);
                 const oldGrossValue = parseFloat(jobProductionEntryDetailBeforeUpdate?.data?.gross_value ?? '0') ?? 0;
-
+                const oldWeightValue = parseFloat(jobProductionEntryDetailBeforeUpdate?.data?.weight_value ?? '0') ?? 0;
 
 
                 const primaryKeyValue = formData.production_entry_id;
@@ -448,6 +448,8 @@ class JobCardService {
                     waste_value: formData.waste_value,
                     net_value: formData.net_value,
                     gross_value: formData.gross_value,
+
+                    weight_value: formData.weight_value,
 
                     updated_on: new Date(),
                     updated_by: formData.createByUserId,
@@ -468,13 +470,19 @@ class JobCardService {
                         editGrossValue = oldGrossValue - parseFloat(formData?.gross_value ?? '0'); //-- old_value - new_value
                     }
 
+                    let editWeightValue = 0;
+                    if (oldWeightValue && oldWeightValue != 0) {
+                        editWeightValue = oldWeightValue - parseFloat(formData?.weight_value ?? '0'); //-- old_value - new_value
+                    }
+
 
                     const columnsLedger: any = {
                         productid: jobCardProduct?.data?.product_id,
                         foreign_key_table_name: 'job_production_entries',
                         foreign_key_name: 'production_entry_id',
                         foreign_key_value: formData.production_entry_id,
-                        quantity: editGrossValue,
+                        weight_quantity_value: oldGrossValue,
+                        quantity: editWeightValue,
                         action_type: ProductionEntriesTypesEnum.NewProductionEntry,
 
                         created_at: new Date(),
@@ -485,9 +493,13 @@ class JobCardService {
 
                         //-- update product stock quantity
                         const ledgerStockQuantity = await getProductQuantityFromLedger(jobCardProduct?.data?.product_id);
+                        const ledgerWeightResult = await getProductWeightValueFromLedger(jobCardProduct?.data?.product_id);
+
                         if (ledgerStockQuantity && ledgerStockQuantity.total_quantity > 0) {
                             const columnsProducts: any = {
                                 stockquantity: ledgerStockQuantity.total_quantity,
+                                weight_value: ledgerWeightResult.total_weight_quantity,
+                                
                                 updated_on: new Date(),
                                 updated_by: formData.createByUserId,
 
@@ -512,6 +524,8 @@ class JobCardService {
                     net_value: formData.net_value,
                     gross_value: formData.gross_value,
 
+                    weight_value: formData.weight_value,
+
 
                     created_on: new Date(),
                     created_by: formData.createByUserId,
@@ -527,7 +541,10 @@ class JobCardService {
                         foreign_key_table_name: 'job_production_entries',
                         foreign_key_name: 'production_entry_id',
                         foreign_key_value: response?.primaryKeyValue,
-                        quantity: -parseInt(formData.gross_value ?? '0'),
+
+                        quantity: -parseInt(formData.weight_value ?? '0'), 
+                        weight_quantity_value: -parseInt(formData.gross_value ?? '0'),
+
                         action_type: ProductionEntriesTypesEnum.NewProductionEntry,
 
                         created_at: new Date(),
@@ -538,9 +555,12 @@ class JobCardService {
 
                         //-- update product stock quantity
                         const ledgerStockQuantity = await getProductQuantityFromLedger(jobCardProduct?.data?.product_id);
+                        const ledgerWeightResult = await getProductWeightValueFromLedger(jobCardProduct?.data?.product_id);
+
                         if (ledgerStockQuantity && ledgerStockQuantity.total_quantity > 0) {
                             const columnsProducts: any = {
                                 stockquantity: ledgerStockQuantity.total_quantity,
+                                weight_value: ledgerWeightResult.total_weight_quantity,
                                 updated_on: new Date(),
                                 updated_by: formData.createByUserId,
 

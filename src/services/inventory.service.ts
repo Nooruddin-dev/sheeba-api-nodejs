@@ -64,6 +64,9 @@ class InventoryService {
                     price: formData.price,
                     unit_type: formData.unit_type,
 
+                    weight_unit_id: formData.weight_unit_id,
+                    weight_value: formData.weight_value,
+
                     created_on: new Date(),
                     created_by: formData.createByUserId,
                     is_bound_to_stock_quantity: false,

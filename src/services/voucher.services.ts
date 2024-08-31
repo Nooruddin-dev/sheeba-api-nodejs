@@ -7,7 +7,7 @@ import { ServiceResponseInterface } from '../models/common/ServiceResponseInterf
 import { dynamicDataGetByAnyColumnService, dynamicDataGetService, dynamicDataInsertService, dynamicDataUpdateService } from './dynamic.service';
 import OrdersService from './orders.service';
 import { ProductionEntriesTypesEnum, PurchaseOrderStatusTypesEnum, UnitTypesEnum } from '../models/enum/GlobalEnums';
-import { getProductQuantityFromLedger } from './common.service';
+import { getProductQuantityFromLedger, getProductWeightValueFromLedger } from './common.service';
 
 class VoucherServices {
 
@@ -184,6 +184,9 @@ class VoucherServices {
                                 product_sku_code: element.product_sku_code,
 
                                 quantity: element.quantity,
+                                weight_value: element.weight_value,
+
+
                                 po_rate: element.po_rate,
                                 amount: element.amount,
                                 item_tax_amount_total: element.item_tax_amount_total,
@@ -208,6 +211,9 @@ class VoucherServices {
                                 foreign_key_name: 'voucher_id',
                                 foreign_key_value: voucher_id,
                                 quantity: parseInt(element.quantity?.toString() ?? '0'),
+
+                                weight_quantity_value: parseInt(element.weight_value?.toString() ?? '0'),
+
                                 action_type: ProductionEntriesTypesEnum.NewGRN,
         
                                 created_at: new Date(),
@@ -217,9 +223,12 @@ class VoucherServices {
 
                                 //-- update product stock quantity
                                 const ledgerStockQuantity = await getProductQuantityFromLedger(element.product_id);
+                                const ledgerWeightResult = await getProductWeightValueFromLedger(element.product_id);
+
                                 if (ledgerStockQuantity && ledgerStockQuantity.total_quantity > 0) {
                                     const columnsProducts: any = {
                                         stockquantity: ledgerStockQuantity.total_quantity,
+                                        weight_value: ledgerWeightResult.total_weight_quantity,
                                         updated_on: new Date(),
                                         updated_by: formData.createByUserId,
         
