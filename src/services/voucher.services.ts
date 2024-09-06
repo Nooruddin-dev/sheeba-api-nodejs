@@ -390,7 +390,7 @@ class VoucherServices {
                     SELECT 
                     MTBL.*, prd.product_name as product_name
                     FROM grn_voucher_line_items MTBL
-                    inner join products prd on prd.productid =  mtbl.product_id
+                    inner join products prd on prd.productid =  MTBL.product_id
                     WHERE MTBL.voucher_id = ${voucher_id} `);
 
                 const grnVoucherItems: any = resultsGrnVoucherItem;

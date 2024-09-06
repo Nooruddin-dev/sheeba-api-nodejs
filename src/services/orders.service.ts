@@ -49,8 +49,8 @@ class OrdersService {
               SELECT ost.status_id, ost.purchase_order_id, OSTYPE.status_name
                FROM purchase_order_status_mapping ost
                LEFT JOIN purchase_order_status_types OSTYPE ON ost.status_id = OSTYPE.status_id
-               WHERE OST.is_active = 1 AND OST.purchase_order_id = ${orderId}
-               ORDER BY OST.order_status_mapping_id DESC
+               WHERE ost.is_active = 1 AND ost.purchase_order_id = ${orderId}
+               ORDER BY ost.order_status_mapping_id DESC
                LIMIT 1;`);
 
             if (results) {
@@ -77,6 +77,7 @@ class OrdersService {
         try {
 
 
+            
 
             //--Insert into purchase order table
             let purchaseOrderTableMainData = {
@@ -259,6 +260,7 @@ class OrdersService {
         return withConnectionDatabase(async (connection: any) => {
             let searchParameters = '';
 
+            
             if (FormData.purchase_order_id > 0) {
                 searchParameters += ` AND MTBL.purchase_order_id = ${FormData.purchase_order_id}`;
             }
@@ -280,8 +282,8 @@ class OrdersService {
                 sale_repres_user.FirstName as sale_representative_first_name, sale_repres_user.LastName as sale_representative_last_name,
                  (SELECT COUNT(*) FROM grn_voucher gv WHERE gv.purchase_order_id = MTBL.purchase_order_id) as total_grn_vouchers
                 FROM purchase_orders MTBL
-                inner join busnpartner vendor on vendor.BusnPartnerId = mtbl.vendor_id
-                inner join busnpartner sale_repres_user on sale_repres_user.BusnPartnerId = mtbl.sale_representative_id
+                inner join busnpartner vendor on vendor.BusnPartnerId = MTBL.vendor_id
+                inner join busnpartner sale_repres_user on sale_repres_user.BusnPartnerId = MTBL.sale_representative_id
 
                 WHERE MTBL.purchase_order_id IS NOT NULL
                 ${searchParameters}
@@ -322,8 +324,8 @@ class OrdersService {
                 vendor.FirstName as vendor_first_name, vendor.LastName as vendor_last_name,
                 sale_repres_user.FirstName as sale_representative_first_name, sale_repres_user.LastName as sale_representative_last_name
                 FROM purchase_orders MTBL
-                inner join busnpartner vendor on vendor.BusnPartnerId = mtbl.vendor_id
-                inner join busnpartner sale_repres_user on sale_repres_user.BusnPartnerId = mtbl.sale_representative_id
+                inner join busnpartner vendor on vendor.BusnPartnerId = MTBL.vendor_id
+                inner join busnpartner sale_repres_user on sale_repres_user.BusnPartnerId = MTBL.sale_representative_id
                 WHERE MTBL.purchase_order_id = ${purchase_order_id} `);
 
 
@@ -343,7 +345,7 @@ class OrdersService {
                     SELECT 
                     MTBL.*, prd.product_name as product_name
                     FROM purchase_orders_items MTBL
-                    inner join products prd on prd.productid =  mtbl.product_id
+                    inner join products prd on prd.productid =  MTBL.product_id
                     WHERE MTBL.purchase_order_id = ${orderMain.purchase_order_id} `);
 
                 const orderItem: any = resultsOrderItem;
@@ -372,8 +374,8 @@ class OrdersService {
                 vendor.FirstName as vendor_first_name, vendor.LastName as vendor_last_name,
                 sale_repres_user.FirstName as sale_representative_first_name, sale_repres_user.LastName as sale_representative_last_name
                 FROM purchase_orders MTBL
-                inner join busnpartner vendor on vendor.BusnPartnerId = mtbl.vendor_id
-                inner join busnpartner sale_repres_user on sale_repres_user.BusnPartnerId = mtbl.sale_representative_id
+                inner join busnpartner vendor on vendor.BusnPartnerId = MTBL.vendor_id
+                inner join busnpartner sale_repres_user on sale_repres_user.BusnPartnerId = MTBL.sale_representative_id
                 WHERE MTBL.purchase_order_id = ${purchase_order_id} `);
 
 
@@ -385,7 +387,7 @@ class OrdersService {
                     SELECT 
                     MTBL.*, prd.product_name as product_name, prd.sku, prd.price , prd.stockquantity
                     FROM purchase_orders_items MTBL
-                    inner join products prd on prd.productid =  mtbl.product_id
+                    inner join products prd on prd.productid =  MTBL.product_id
                     WHERE MTBL.purchase_order_id = ${orderMain.purchase_order_id} `);
                 const orderItem: any = resultsOrderItem;
                 orderMain.order_items = orderItem;

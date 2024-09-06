@@ -27,6 +27,9 @@ class UserController {
         return;
       }
 
+      
+
+
       console.log('pass', model.password)
       const encryptedPassword = encryptPassword(model.password, 5);
       console.log('pass', encryptedPassword)

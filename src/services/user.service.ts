@@ -31,6 +31,8 @@ class UserService {
   }
 
   public async getUserLogin(UserName: string, Password: string): Promise<UserEntity | null> {
+console.log( 'UserName' ,UserName);
+console.log( 'Password' ,Password);
 
     return withConnectionDatabase(async (connection: any) => {
       const [results]: any = await connection.query(

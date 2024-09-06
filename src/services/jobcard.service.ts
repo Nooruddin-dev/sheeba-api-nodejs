@@ -40,7 +40,7 @@ class JobCardService {
             const [results]: any = await connection.query(`
                 SELECT COUNT(*) OVER () as TotalRecords, 
                 MTBL.*
-                FROM PRODUCTS MTBL
+                FROM products MTBL
                 WHERE MTBL.productid IS NOT NULL
                 ${searchParameters}
                 ORDER BY MTBL.productid DESC
@@ -357,7 +357,7 @@ class JobCardService {
                     SELECT 
                     MTBL.*, prd.product_name as product_name, prd.sku
                     FROM job_card_products MTBL
-                    inner join products prd on prd.productid =  mtbl.product_id
+                    inner join products prd on prd.productid =  MTBL.product_id
                     WHERE MTBL.job_card_id = ${jobCardMain.job_card_id} `);
                 const job_card_products: any = resultJobCardProducts;
                 jobCardMain.job_card_products = job_card_products;
@@ -592,7 +592,7 @@ class JobCardService {
 
 
             if (stringIsNullOrWhiteSpace(FormData.production_entry_id) == false) {
-                searchParameters += ` AND MTBL.production_entry_id LIKE '%${FormData.production_entry_id}%' `;
+                searchParameters += ` AND mtbl.production_entry_id LIKE '%${FormData.production_entry_id}%' `;
             }
             if (stringIsNullOrWhiteSpace(FormData.job_card_id) == false) {
                 searchParameters += ` AND JMSTR.job_card_id LIKE '%${FormData.job_card_id}%' `;
@@ -606,15 +606,15 @@ class JobCardService {
 
             const [results]: any = await connection.query(`
                 SELECT COUNT(*) OVER () as TotalRecords, 
-                MTBL.*, prdc.product_name, prdc.sku, mtc.machine_name, JMSTR.job_card_no, JMSTR.company_name, JMSTR.product_name, JMSTR.weight_qty
-                FROM job_production_entries MTBL
+                mtbl.*, prdc.product_name, prdc.sku, mtc.machine_name, JMSTR.job_card_no, JMSTR.company_name, JMSTR.product_name, JMSTR.weight_qty
+                FROM job_production_entries mtbl
                 LEFT join job_card_products JBCRD on JBCRD.job_card_product_id =  mtbl.job_card_product_id
                 inner join job_cards_master JMSTR on JMSTR.job_card_id =  mtbl.job_card_id
                 LEFT join products  prdc on JBCRD.product_id =  prdc.productid
-                inner join machines  mtc on MTBL.machine_id =  mtc.machine_id
-                WHERE MTBL.production_entry_id IS NOT NULL
+                inner join machines  mtc on mtbl.machine_id =  mtc.machine_id
+                WHERE mtbl.production_entry_id IS NOT NULL
                 ${searchParameters}
-                ORDER BY MTBL.production_entry_id DESC
+                ORDER BY mtbl.production_entry_id DESC
                 LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
             `);
 
@@ -718,26 +718,26 @@ class JobCardService {
 
 
             if (stringIsNullOrWhiteSpace(FormData.job_card_id) == false) {
-                searchParameters += ` AND MTBL.job_card_id = '${FormData.job_card_id}' `;
+                searchParameters += ` AND mtbl.job_card_id = '${FormData.job_card_id}' `;
             }
 
             if (stringIsNullOrWhiteSpace(FormData.fromDate) == false) {
-                searchParameters += ` AND MTBL.created_on >= '${FormData.fromDate}' `;
+                searchParameters += ` AND mtbl.created_on >= '${FormData.fromDate}' `;
             }
 
             if (stringIsNullOrWhiteSpace(FormData.toDate) == false) {
-                searchParameters += ` AND MTBL.created_on <= '${FormData.toDate}' `;
+                searchParameters += ` AND mtbl.created_on <= '${FormData.toDate}' `;
             }
 
             
 
             const [results]: any = await connection.query(`
                 SELECT COUNT(*) OVER () as TotalRecords, 
-                MTBL.*, JMSTR.job_card_no, JMSTR.created_on as job_date
-                FROM job_card_dispatch_data MTBL
+                mtbl.*, JMSTR.job_card_no, JMSTR.created_on as job_date
+                FROM job_card_dispatch_data mtbl
                 inner join job_cards_master JMSTR on JMSTR.job_card_id =  mtbl.job_card_id
               
-                WHERE MTBL.job_card_id IS NOT NULL
+                WHERE mtbl.job_card_id IS NOT NULL
                 ${searchParameters}
                 
                 
@@ -758,10 +758,10 @@ class JobCardService {
 
             const [resultJobCardDispatchData]: any = await connection.query(`
                 SELECT 
-                MTBL.*, JMSTR.job_card_no, JMSTR.created_on as job_date
-                FROM job_card_dispatch_data MTBL
+                mtbl.*, JMSTR.job_card_no, JMSTR.created_on as job_date
+                FROM job_card_dispatch_data mtbl
                 inner join job_cards_master JMSTR on JMSTR.job_card_id =  mtbl.job_card_id
-                 WHERE MTBL.card_dispatch_info_id = ${card_dispatch_info_id}
+                 WHERE mtbl.card_dispatch_info_id = ${card_dispatch_info_id}
                 `);
 
 
