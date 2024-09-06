@@ -127,7 +127,7 @@ class OrdersService {
                     for (const element of formData.cartAllProducts) {
 
                         //--get product details by id
-                        var productDetail = await dynamicDataGetService('Products', 'productid', element.productid);
+                        var productDetail = await dynamicDataGetService('products', 'productid', element.productid);
 
                         if (productDetail && productDetail?.data && productDetail?.data?.productid > 0) {
 

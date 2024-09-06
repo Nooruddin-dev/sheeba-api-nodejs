@@ -35,8 +35,8 @@ class UserService {
     return withConnectionDatabase(async (connection: any) => {
       const [results]: any = await connection.query(
         `SELECT USR.*, ATC.AttachmentURL AS ProfilePictureUrl
-        FROM BusnPartner USR
-        LEFT JOIN Attachments ATC ON ATC.AttachmentID = USR.ProfilePictureId
+        FROM busnpartner USR
+        LEFT JOIN attachments ATC ON ATC.AttachmentID = USR.ProfilePictureId
         WHERE ((USR.EmailAddress = ? AND USR.Password = ?) OR (USR.UserName = ? AND USR.Password = ?))
         AND USR.IsActive = 1 AND USR.IsVerified = 1
         LIMIT 1`,
@@ -82,9 +82,9 @@ class UserService {
             MTBL.*, 
             ATC.AttachmentURL AS ProfilePicturePath, 
             BTYPE.BusnPartnerTypeName
-            FROM BusnPartner MTBL
-            LEFT JOIN Attachments ATC ON ATC.AttachmentID = MTBL.ProfilePictureId
-            INNER JOIN BusnPartnerType BTYPE ON BTYPE.BusnPartnerTypeId = MTBL.BusnPartnerTypeId
+            FROM busnpartner MTBL
+            LEFT JOIN attachments ATC ON ATC.AttachmentID = MTBL.ProfilePictureId
+            INNER JOIN busnpartnertype BTYPE ON BTYPE.BusnPartnerTypeId = MTBL.BusnPartnerTypeId
             WHERE MTBL.BusnPartnerId IS NOT NULL
             ${searchParameters}
             ORDER BY MTBL.BusnPartnerId DESC
@@ -106,8 +106,8 @@ class UserService {
 
       const [rows] = await connection.query(`
         SELECT MTBL.*, BPAT.AddressTypeName
-        FROM BusnPartnerAddressAssociation MTBL
-        LEFT JOIN BusnPartnerAddressType BPAT ON BPAT.AddressTypeId = MTBL.AddressTypeId
+        FROM busnpartneraddressassociation MTBL
+        LEFT JOIN busnpartneraddresstype BPAT ON BPAT.AddressTypeId = MTBL.AddressTypeId
         WHERE MTBL.BusnPartnerId = ${busnPartnerId}
     `);
 
@@ -126,8 +126,8 @@ class UserService {
       let result: busnPartnerPhoneAssociationModel[] = [];
       const [rows] = await connection.query(`
         SELECT MTBL.*, BPPT.PhoneTypeName
-        FROM BusnPartnerPhoneAssociation MTBL
-        LEFT JOIN BusnPartnerPhoneType BPPT ON BPPT.PhoneTypeId = MTBL.PhoneTypeId
+        FROM busnpartnerphoneassociation MTBL
+        LEFT JOIN busnpartnerphonetype BPPT ON BPPT.PhoneTypeId = MTBL.PhoneTypeId
         WHERE MTBL.BusnPartnerId =  ${busnPartnerId}`);
 
       result = rows as busnPartnerPhoneAssociationModel[];
@@ -195,7 +195,7 @@ class UserService {
       const [rows]: any = await connection.query(`
         SELECT COUNT(*) OVER () as TotalRecords, 
         MTBL.*
-        FROM BusnPartnerType MTBL
+        FROM busnpartnertype MTBL
         WHERE MTBL.BusnPartnerTypeId IS NOT NULL
         ORDER BY MTBL.BusnPartnerTypeId DESC
         LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}

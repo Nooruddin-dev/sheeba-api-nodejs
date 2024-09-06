@@ -55,14 +55,14 @@ class InventoryController {
                 //     return;
                 // }
 
-                var skuData = await dynamicDataGetByAnyColumnService('Products', 'sku', model.sku);
+                var skuData = await dynamicDataGetByAnyColumnService('products', 'sku', model.sku);
                 if (skuData && skuData?.data && skuData?.data?.length > 0) {
                     responseBody.responseMessage = 'Sku already exists. Please try with another!';
                     res.status(200).json({ Response: responseBody });
                     return;
                 }
 
-                var productNameData = await dynamicDataGetByAnyColumnService('Products', 'product_name', model.product_name);
+                var productNameData = await dynamicDataGetByAnyColumnService('products', 'product_name', model.product_name);
                 if (productNameData && productNameData?.data && productNameData?.data?.length > 0) {
                     responseBody.responseMessage = 'Product name already exists. Please try with another!';
                     res.status(200).json({ Response: responseBody });

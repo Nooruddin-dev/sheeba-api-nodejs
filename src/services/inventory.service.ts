@@ -26,7 +26,7 @@ class InventoryService {
 
 
 
-            const tableName = 'Products';
+            const tableName = 'products';
             const primaryKeyName = 'productid';
 
             if (formData.productid != undefined && formData.productid != null && formData.productid > 0) {
@@ -149,7 +149,7 @@ class InventoryService {
             const [results]: any = await connection.query(`
                 SELECT COUNT(*) OVER () as TotalRecords, 
                 MTBL.*
-                FROM PRODUCTS MTBL
+                FROM products MTBL
                 WHERE MTBL.productid IS NOT NULL
                 ${searchParameters}
                 ORDER BY MTBL.productid DESC
@@ -199,7 +199,7 @@ class InventoryService {
             const [results]: any = await connection.query(`
                 SELECT COUNT(*) OVER () as TotalRecords, 
                 MTBL.*
-                FROM PRODUCTS MTBL
+                FROM products MTBL
                 WHERE MTBL.productid IS NOT NULL
                 ${searchParameters}
                 ORDER BY MTBL.productid DESC
@@ -218,7 +218,7 @@ class InventoryService {
         return withConnectionDatabase(async (connection: any) => {
             const [results]: any = await connection.query(`
                 SELECT MTBL.*
-                FROM PRODUCTS MTBL
+                FROM products MTBL
                 WHERE MTBL.productid  = ${productid};`);
 
             if (results) {

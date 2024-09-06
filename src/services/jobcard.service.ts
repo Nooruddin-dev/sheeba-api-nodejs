@@ -806,9 +806,9 @@ class JobCardService {
                 JCM.job_size
                 FROM job_production_entries MTBL
                 LEFT JOIN job_card_products JCP ON JCP.job_card_id = MTBL.job_card_id
-                LEFT JOIN PRODUCTS PRD ON PRD.productid = JCP.product_id
+                LEFT JOIN products PRD ON PRD.productid = JCP.product_id
                 INNER JOIN job_cards_master JCM on JCM.job_card_id = MTBL.job_card_id
-                LEFT JOIN Machines MSN ON MTBL.machine_id = MSN.machine_id
+                LEFT JOIN machines MSN ON MTBL.machine_id = MSN.machine_id
 
                 INNER JOIN machine_types MCT on MCT.machine_type_id = MSN.machine_type_id
               

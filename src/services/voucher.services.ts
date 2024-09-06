@@ -171,7 +171,7 @@ class VoucherServices {
                     for (const element of formData.cartGrnVoucherLineItems) {
 
                         //--get product details by id
-                        var productDetail = await dynamicDataGetService('Products', 'productid', element.product_id);
+                        var productDetail = await dynamicDataGetService('products', 'productid', element.product_id);
 
                         if (productDetail && productDetail?.data && productDetail?.data?.productid > 0) {
 
