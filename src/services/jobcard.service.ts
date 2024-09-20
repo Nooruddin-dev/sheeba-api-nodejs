@@ -304,16 +304,16 @@ class JobCardService {
             let searchParameters = '';
 
 
-            if (stringIsNullOrWhiteSpace(FormData.job_card_id) == false) {
-                searchParameters += ` AND MTBL.job_card_id LIKE '%${FormData.job_card_id}%' `;
+            if (stringIsNullOrWhiteSpace(FormData.job_card_no) == false) {
+                searchParameters += ` AND MTBL.job_card_no LIKE '%${FormData.job_card_no}%' `;
             }
 
             if (stringIsNullOrWhiteSpace(FormData.company_name) == false) {
                 searchParameters += ` AND MTBL.company_name LIKE '%${FormData.company_name}%' `;
             }
 
-            if (stringIsNullOrWhiteSpace(FormData.sealing_method) == false) {
-                searchParameters += ` AND MTBL.sealing_method LIKE '%${FormData.sealing_method}%' `;
+            if (stringIsNullOrWhiteSpace(FormData.product_name) == false) {
+                searchParameters += ` AND MTBL.product_name LIKE '%${FormData.product_name}%' `;
             }
 
 
@@ -431,12 +431,13 @@ class JobCardService {
             //-- get product id from job_card_products
             const jobCardProduct = await dynamicDataGetService('job_card_products', 'job_card_product_id', formData.job_card_product_id);
 
-
+            const machineInfo = await this.getMachineInfoForProductionEntry(formData.machine_id);
+            
             if (formData.production_entry_id != undefined && formData.production_entry_id != null && formData.production_entry_id > 0) {
 
                 //-- get production entry detail by id before update
                 const jobProductionEntryDetailBeforeUpdate = await dynamicDataGetService('job_production_entries', 'production_entry_id', formData.production_entry_id);
-                const oldGrossValue = parseFloat(jobProductionEntryDetailBeforeUpdate?.data?.gross_value ?? '0') ?? 0;
+                const oldNetValue = parseFloat(jobProductionEntryDetailBeforeUpdate?.data?.net_value ?? '0') ?? 0;
                 const oldWeightValue = parseFloat(jobProductionEntryDetailBeforeUpdate?.data?.weight_value ?? '0') ?? 0;
 
 
@@ -451,6 +452,10 @@ class JobCardService {
 
                     weight_value: formData.weight_value,
 
+                    start_time: formData.start_time,
+                    end_time: formData.end_time,
+                    tare_core: formData.tare_core,
+
                     updated_on: new Date(),
                     updated_by: formData.createByUserId,
 
@@ -460,54 +465,70 @@ class JobCardService {
 
                 response = await dynamicDataUpdateService(tableName, primaryKeyName, primaryKeyValue, columns);
 
-                if (response?.success == true && jobCardProduct?.data?.product_id > 0) {
+                if (response?.success == true) {
 
-                    //-- get product ledger info
-                    // const formDataLedger = {productid: jobCardProduct?.data?.product_id}
-                    // const productLedgerInfo = await this.getProductEntryLedgerInfo(formDataLedger);
-                    let editGrossValue = 0;
-                    if (oldGrossValue && oldGrossValue != 0) {
-                        editGrossValue = oldGrossValue - parseFloat(formData?.gross_value ?? '0'); //-- old_value - new_value
-                    }
+                    if (jobCardProduct?.data?.product_id > 0) {
+                        //-- get product ledger info
+                        // const formDataLedger = {productid: jobCardProduct?.data?.product_id}
+                        // const productLedgerInfo = await this.getProductEntryLedgerInfo(formDataLedger);
+                        let editNetValue = 0;
+                        if (oldNetValue && oldNetValue != 0) {
+                            editNetValue = oldNetValue - parseFloat(formData?.net_value?.toString() ?? '0'); //-- old_value - new_value
+                        }
 
-                    let editWeightValue = 0;
-                    if (oldWeightValue && oldWeightValue != 0) {
-                        editWeightValue = oldWeightValue - parseFloat(formData?.weight_value ?? '0'); //-- old_value - new_value
-                    }
+                        let editWeightValue = 0;
+                        if (oldWeightValue && oldWeightValue != 0) {
+                            editWeightValue = oldWeightValue - parseFloat(formData?.weight_value ?? '0'); //-- old_value - new_value
+                        }
 
 
-                    const columnsLedger: any = {
-                        productid: jobCardProduct?.data?.product_id,
-                        foreign_key_table_name: 'job_production_entries',
-                        foreign_key_name: 'production_entry_id',
-                        foreign_key_value: formData.production_entry_id,
-                        weight_quantity_value: oldGrossValue,
-                        quantity: editWeightValue,
-                        action_type: ProductionEntriesTypesEnum.NewProductionEntry,
+                        const columnsLedger: any = {
+                            productid: jobCardProduct?.data?.product_id,
+                            foreign_key_table_name: 'job_production_entries',
+                            foreign_key_name: 'production_entry_id',
+                            foreign_key_value: formData.production_entry_id,
+                            weight_quantity_value: oldNetValue,
+                            quantity: editWeightValue,
+                            action_type: ProductionEntriesTypesEnum.NewProductionEntry,
 
-                        created_at: new Date(),
-                    };
+                            created_at: new Date(),
+                        };
 
-                    const responseLedger = await dynamicDataInsertService('inventory_ledger', 'ledger_id', null, true, columnsLedger);
-                    if (responseLedger?.success == true) {
+                        const responseLedger = await dynamicDataInsertService('inventory_ledger', 'ledger_id', null, true, columnsLedger);
+                        if (responseLedger?.success == true) {
 
-                        //-- update product stock quantity
-                        const ledgerStockQuantity = await getProductQuantityFromLedger(jobCardProduct?.data?.product_id);
-                        const ledgerWeightResult = await getProductWeightValueFromLedger(jobCardProduct?.data?.product_id);
+                            //-- update product stock quantity
+                            const ledgerStockQuantity = await getProductQuantityFromLedger(jobCardProduct?.data?.product_id);
+                            const ledgerWeightResult = await getProductWeightValueFromLedger(jobCardProduct?.data?.product_id);
 
-                        if (ledgerStockQuantity && ledgerStockQuantity.total_quantity > 0) {
-                            const columnsProducts: any = {
-                                stockquantity: ledgerStockQuantity.total_quantity,
-                                weight_value: ledgerWeightResult.total_weight_quantity,
-                                
-                                updated_on: new Date(),
-                                updated_by: formData.createByUserId,
+                            if (ledgerStockQuantity && ledgerStockQuantity.total_quantity > 0) {
+                                const columnsProducts: any = {
+                                    stockquantity: ledgerStockQuantity.total_quantity,
+                                    weight_value: ledgerWeightResult.total_weight_quantity,
 
-                            };
-                            var responseOrderMain = await dynamicDataUpdateService('products', 'productid', jobCardProduct?.data?.product_id, columnsProducts);
+                                    updated_on: new Date(),
+                                    updated_by: formData.createByUserId,
+
+                                };
+                                var responseOrderMain = await dynamicDataUpdateService('products', 'productid', jobCardProduct?.data?.product_id, columnsProducts);
+                            }
+
                         }
 
                     }
+
+                    //-- update status of job card from machine type
+                    if (machineInfo && !stringIsNullOrWhiteSpace(machineInfo.machine_type_name)) {
+                        const columnsJobCardMaster: any = {
+                            job_status: machineInfo.machine_type_name,
+                            updated_on: new Date(),
+                            updated_by: formData.createByUserId,
+                        };
+                        var responseJobCardMaster = await dynamicDataUpdateService('job_cards_master', "job_card_id", formData?.job_card_id?.toString() ?? "0", columnsJobCardMaster);
+
+                    }
+
+
                 }
 
 
@@ -526,6 +547,10 @@ class JobCardService {
 
                     weight_value: formData.weight_value,
 
+                    start_time: formData.start_time,
+                    end_time: formData.end_time,
+                    tare_core: formData.tare_core,
+
 
                     created_on: new Date(),
                     created_by: formData.createByUserId,
@@ -535,40 +560,58 @@ class JobCardService {
 
 
                 response = await dynamicDataInsertService(tableName, primaryKeyName, null, true, columns);
-                if (response?.success == true && jobCardProduct?.data?.product_id > 0) {
-                    const columnsLedger: any = {
-                        productid: jobCardProduct?.data?.product_id,
-                        foreign_key_table_name: 'job_production_entries',
-                        foreign_key_name: 'production_entry_id',
-                        foreign_key_value: response?.primaryKeyValue,
+                if (response?.success == true) {
 
-                        quantity: -parseInt(formData.weight_value ?? '0'), 
-                        weight_quantity_value: -parseInt(formData.gross_value ?? '0'),
+                    if (jobCardProduct?.data?.product_id > 0) {
 
-                        action_type: ProductionEntriesTypesEnum.NewProductionEntry,
+                        const columnsLedger: any = {
+                            productid: jobCardProduct?.data?.product_id,
+                            foreign_key_table_name: 'job_production_entries',
+                            foreign_key_name: 'production_entry_id',
+                            foreign_key_value: response?.primaryKeyValue,
 
-                        created_at: new Date(),
-                    };
+                            quantity: -parseInt(formData.weight_value ?? '0'),
+                            weight_quantity_value: -parseInt(formData.net_value?.toString() ?? '0'),
 
-                    const responseLedger = await dynamicDataInsertService('inventory_ledger', 'ledger_id', null, true, columnsLedger);
-                    if (responseLedger?.success == true) {
+                            action_type: ProductionEntriesTypesEnum.NewProductionEntry,
 
-                        //-- update product stock quantity
-                        const ledgerStockQuantity = await getProductQuantityFromLedger(jobCardProduct?.data?.product_id);
-                        const ledgerWeightResult = await getProductWeightValueFromLedger(jobCardProduct?.data?.product_id);
+                            created_at: new Date(),
+                        };
 
-                        if (ledgerStockQuantity && ledgerStockQuantity.total_quantity > 0) {
-                            const columnsProducts: any = {
-                                stockquantity: ledgerStockQuantity.total_quantity,
-                                weight_value: ledgerWeightResult.total_weight_quantity,
-                                updated_on: new Date(),
-                                updated_by: formData.createByUserId,
+                        const responseLedger = await dynamicDataInsertService('inventory_ledger', 'ledger_id', null, true, columnsLedger);
+                        if (responseLedger?.success == true) {
 
-                            };
-                            var responseOrderMain = await dynamicDataUpdateService('products', 'productid', jobCardProduct?.data?.product_id, columnsProducts);
+                            //-- update product stock quantity
+                            const ledgerStockQuantity = await getProductQuantityFromLedger(jobCardProduct?.data?.product_id);
+                            const ledgerWeightResult = await getProductWeightValueFromLedger(jobCardProduct?.data?.product_id);
+
+                            if (ledgerStockQuantity && ledgerStockQuantity.total_quantity > 0) {
+                                const columnsProducts: any = {
+                                    stockquantity: ledgerStockQuantity.total_quantity,
+                                    weight_value: ledgerWeightResult.total_weight_quantity,
+                                    updated_on: new Date(),
+                                    updated_by: formData.createByUserId,
+
+                                };
+                                var responseOrderMain = await dynamicDataUpdateService('products', 'productid', jobCardProduct?.data?.product_id, columnsProducts);
+                            }
+
                         }
 
                     }
+
+                    //-- update status of job card from machine type
+                    if (machineInfo && !stringIsNullOrWhiteSpace(machineInfo.machine_type_name)) {
+                        const columnsJobCardMaster: any = {
+                            job_status: machineInfo.machine_type_name,
+                            updated_on: new Date(),
+                            updated_by: formData.createByUserId,
+                        };
+                        var responseJobCardMaster = await dynamicDataUpdateService('job_cards_master', "job_card_id", formData?.job_card_id?.toString() ?? "0", columnsJobCardMaster);
+
+                    }
+
+
                 }
 
 
@@ -729,7 +772,7 @@ class JobCardService {
                 searchParameters += ` AND mtbl.created_on <= '${FormData.toDate}' `;
             }
 
-            
+
 
             const [results]: any = await connection.query(`
                 SELECT COUNT(*) OVER () as TotalRecords, 
@@ -767,7 +810,7 @@ class JobCardService {
 
             if (resultJobCardDispatchData && resultJobCardDispatchData.length > 0) {
                 return resultJobCardDispatchData[0];
-            }else{
+            } else {
                 return null;
             }
 
@@ -797,8 +840,8 @@ class JobCardService {
             if (!stringIsNullOrWhiteSpace(FormData.commaSeparatedMachineIds)) {
                 searchParameters += ` AND MSN.machine_id IN (${FormData.commaSeparatedMachineIds}) `;
             }
-         
-          
+
+
 
             const [results]: any = await connection.query(`
                 SELECT MTBL.production_entry_id, MTBL.job_card_id, MTBL.machine_id, MTBL.job_card_product_id, MTBL.waste_value, MTBL.net_value, 
@@ -820,6 +863,31 @@ class JobCardService {
 
             const finalData: any = results;
             return finalData;
+
+        });
+
+
+    }
+
+
+    public async getMachineInfoForProductionEntry(machine_id: any): Promise<any> {
+
+        return withConnectionDatabase(async (connection: any) => {
+
+            const [resultMachineType]: any = await connection.query(`
+                SELECT 
+                mtbl.*,  MTYPE.machine_type_name
+                FROM machines mtbl
+                inner join machine_types MTYPE on MTYPE.machine_type_id =  mtbl.machine_type_id
+                 WHERE mtbl.machine_id = ${machine_id}
+                `);
+
+
+            if (resultMachineType && resultMachineType.length > 0) {
+                return resultMachineType[0];
+            } else {
+                return null;
+            }
 
         });
 

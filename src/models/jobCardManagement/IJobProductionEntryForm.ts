@@ -9,6 +9,10 @@ export interface IJobProductionEntryForm {
 
     weight_value?: string;
 
+    start_time?: string;
+    end_time?: string;
+    tare_core?: number;
+
 
     createByUserId?: number;
 }

@@ -107,7 +107,7 @@ class JobCardController {
 
     public getAllJobCardsListApi = async (req: Request, res: Response): Promise<void> => {
 
-        const { job_card_id, company_name, sealing_method, pageNo = 1, pageSize = 10 } = req.query;
+        const { job_card_no, company_name, product_name, pageNo = 1, pageSize = 10 } = req.query;
 
         try {
             //const busnPartnerIdHeader = getBusnPartnerIdFromApiHeader(req);
@@ -115,9 +115,9 @@ class JobCardController {
             const formData = {
                 pageNo: pageNo ?? 1,
                 pageSize: pageSize ?? 10,
-                job_card_no: job_card_id ? job_card_id : "",
+                job_card_no: job_card_no ? job_card_no : "",
                 company_name: company_name || '',
-                sealing_method: sealing_method || '',
+                product_name: product_name || '',
             };
 
             console.log('formData', formData);

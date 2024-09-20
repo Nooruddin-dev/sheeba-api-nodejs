@@ -1,4 +1,10 @@
 export const enum JobCardStatusEnum {
     InProgress = 'InProgress',
-    Dispatched = 'Dispatched'
+    Dispatched = 'Dispatched',
+    Extruder = 'Extruder',
+    Cutting = 'Cutting',
+    Printing = 'Printing',
+    Lamination = 'Lamination',
+    Slitting = 'Slitting',
+
 }
