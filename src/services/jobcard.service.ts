@@ -432,7 +432,7 @@ class JobCardService {
             const jobCardProduct = await dynamicDataGetService('job_card_products', 'job_card_product_id', formData.job_card_product_id);
 
             const machineInfo = await this.getMachineInfoForProductionEntry(formData.machine_id);
-            
+
             if (formData.production_entry_id != undefined && formData.production_entry_id != null && formData.production_entry_id > 0) {
 
                 //-- get production entry detail by id before update
@@ -712,19 +712,13 @@ class JobCardService {
             const primaryKeyName = 'card_dispatch_info_id';
 
 
-
+            const grand_total = formData?.deliveryChallanLineItems?.reduce((total: number, item: { total_value: number; }) => total + item.total_value, 0)
             const columns: any = {
                 job_card_id: formData.job_card_id,
+                company_name: formData.company_name,
                 item_name: formData.item_name,
-                total_bags: formData.total_bags,
-                quantity: formData.quantity,
-                core_value: formData.core_value,
-                gross_value: formData.gross_value,
-                net_weight: formData.net_weight,
-                grand_total: formData.grand_total,
-                card_tax_type: formData.card_tax_type,
-                card_tax_value: formData.card_tax_value,
                 show_company_detail: formData.show_company_detail,
+                grand_total: grand_total,
 
                 created_on: new Date(),
                 created_by: formData.createByUserId,
@@ -741,6 +735,30 @@ class JobCardService {
                 };
                 var responseCardDispatch = await dynamicDataUpdateService('job_card_dispatch_data', 'card_dispatch_info_id', card_dispatch_info_id, columnsDispatchUpdate);
 
+
+                if (formData.deliveryChallanLineItems && formData.deliveryChallanLineItems.length > 0) {
+
+                    for (const element of formData.deliveryChallanLineItems) {
+
+                        const columnsChallanItem: any = {
+                            card_dispatch_info_id: card_dispatch_info_id,
+
+                            total_bags: element.total_bags,
+                            quantity: element.quantity,
+                            dispatch_unit_id: element.dispatch_unit_id,
+                            net_weight: element.net_weight,
+                            tare_value: element.tare_value,
+                            total_value: element.total_value,
+
+
+                        }
+                        var responseOrderItem = await dynamicDataInsertService("delivery_challan_items", "challan_item_id",
+                            null, true, columnsChallanItem);
+
+
+                    }
+
+                }
 
             }
 
@@ -809,7 +827,17 @@ class JobCardService {
 
 
             if (resultJobCardDispatchData && resultJobCardDispatchData.length > 0) {
-                return resultJobCardDispatchData[0];
+                const result = resultJobCardDispatchData[0];
+                const [resultChallanItems]: any = await connection.query(`
+                    SELECT 
+                    mtbl.*
+                    FROM delivery_challan_items mtbl
+                    WHERE mtbl.card_dispatch_info_id = ${card_dispatch_info_id}
+                    `);
+
+                result.deliveryChallanLineItems = resultChallanItems;
+
+                return result;
             } else {
                 return null;
             }

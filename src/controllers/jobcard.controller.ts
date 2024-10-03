@@ -297,13 +297,17 @@ class JobCardController {
             };
 
 
-            if (stringIsNullOrWhiteSpace(model.item_name) || stringIsNullOrWhiteSpace(model.total_bags) || stringIsNullOrWhiteSpace(model.quantity)
-                || stringIsNullOrWhiteSpace(model.core_value) || stringIsNullOrWhiteSpace(model.gross_value) || stringIsNullOrWhiteSpace(model.net_weight)) {
+            if (stringIsNullOrWhiteSpace(model.item_name)) {
                     responseBody.responseMessage = 'Please fill all required fields';
                     res.status(200).json({ Response: responseBody });
                     return;
             }
     
+            if (model.deliveryChallanLineItems?.length === 0) {
+                responseBody.responseMessage = 'Please add at least one item in the line items!';
+                res.status(200).json({ Response: responseBody });
+                return;
+            }
     
             const busnPartnerIdHeader = getBusnPartnerIdFromApiHeader(req);
             model.createByUserId = busnPartnerIdHeader;
