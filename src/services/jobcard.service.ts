@@ -922,6 +922,28 @@ class JobCardService {
 
     }
 
+    public async getAllProductsForProductionEntryService(FormData: any): Promise<any> {
+
+        return withConnectionDatabase(async (connection: any) => {
+          
+
+
+            const [results]: any = await connection.query(`
+                SELECT
+                MTBL.*
+                FROM products MTBL
+                ORDER BY MTBL.productid DESC
+                LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
+            `);
+
+            const finalData: any = results;
+            return finalData;
+
+        });
+
+
+    }
+
 
 
 }

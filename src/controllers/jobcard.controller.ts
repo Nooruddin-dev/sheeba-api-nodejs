@@ -422,6 +422,37 @@ class JobCardController {
     }
 
 
+    public getAllProductsForProductionEntryApi = async (req: Request, res: Response): Promise<void> => {
+
+        const { job_card_no, company_name, product_name, pageNo = 1, pageSize = 10 } = req.query;
+
+        try {
+            //const busnPartnerIdHeader = getBusnPartnerIdFromApiHeader(req);
+
+            const formData = {
+                pageNo: pageNo ?? 1,
+                pageSize: 2000,
+            
+            };
+
+            console.log('formData', formData);
+
+            const result = await this.jobCardService.getAllProductsForProductionEntryService(formData);
+
+            if (!result) {
+                res.status(404).json({ message: 'Not Found' });
+            } else {
+                res.status(200).json(result);
+            }
+        } catch (err: any) {
+
+            res.status(500).json({ message: 'Error fetching users', error: err.message });
+        }
+
+
+    }
+
+
 }
 
 

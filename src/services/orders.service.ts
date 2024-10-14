@@ -8,6 +8,9 @@ import { stringIsNullOrWhiteSpace } from '../utils/commonHelpers/ValidationHelpe
 import { calculateItemAmount } from '../utils/commonHelpers/OrderHelper';
 import { PurchaseOrderStatusTypesEnum } from '../models/enum/GlobalEnums';
 import { IPurchaseOrderStatusUpdateRequestForm } from '../models/orders/IPurchaseOrderStatusUpdateRequestForm';
+import { sendEmailFunc } from './EmailService';
+import { WEBSITE_BASE_URL } from '../configurations/config';
+import { v4 as uuidv4 } from 'uuid';
 
 
 class OrdersService {
@@ -77,7 +80,7 @@ class OrdersService {
         try {
 
 
-            
+
 
             //--Insert into purchase order table
             let purchaseOrderTableMainData = {
@@ -101,6 +104,7 @@ class OrdersService {
                 show_company_detail: formData.show_company_detail,
                 // order_tax_total: formData.orderLevelTaxAmount,
                 order_total: formData.orderTotal,
+                order_guid: uuidv4(),
 
                 created_on: new Date(),
                 created_by: formData.createByUserId,
@@ -244,6 +248,20 @@ class OrdersService {
                     null, true, columnsOrderStatusMappings);
 
 
+                //Send email
+                const purchaseOrdersLink = `${WEBSITE_BASE_URL}/site/purchase-orders-list`
+                const subject = 'New Purchase Order Created';
+                const vendorDetail = await dynamicDataGetService("busnpartner", "BusnPartnerId" , formData.vendor_id); 
+                const html = `
+                        <b>A new purchase order has been created.</b><br>
+                        <p>Order ID: ${poNumber}</p>
+                        <a href="${purchaseOrdersLink}">View Purchase Orders</a>
+                    `;
+
+                sendEmailFunc(vendorDetail?.data.EmailAddress, subject, html);
+
+
+
             }
 
 
@@ -260,7 +278,7 @@ class OrdersService {
         return withConnectionDatabase(async (connection: any) => {
             let searchParameters = '';
 
-            
+
             if (FormData.purchase_order_id > 0) {
                 searchParameters += ` AND MTBL.purchase_order_id = ${FormData.purchase_order_id}`;
             }
@@ -421,7 +439,7 @@ class OrdersService {
         try {
 
 
-            
+
 
 
             //--First update existing order status mapping
@@ -432,7 +450,7 @@ class OrdersService {
                     primaryKeyValue: null
                 };
 
-                
+
                 // Execute the update query
                 const [result]: any = await connection.execute(`UPDATE purchase_order_status_mapping
                       SET is_active = 0 where purchase_order_id = ${formData.purchase_order_id};`);
@@ -458,6 +476,22 @@ class OrdersService {
                 };
                 response = await dynamicDataInsertService("purchase_order_status_mapping", "order_status_mapping_id", null, true, columnsOrderStatusMapping);
 
+                //--now send email to vendor on status approval
+                if(formData.status_id == PurchaseOrderStatusTypesEnum.Approve){
+                    const purchaseOrderDetail = await dynamicDataGetService("purchase_orders", "purchase_order_id" , formData.purchase_order_id);
+                    const orderVendorId = purchaseOrderDetail?.data?.vendor_id;
+                    const vendorDetail = await dynamicDataGetService("busnpartner", "BusnPartnerId" , orderVendorId);
+
+                    const purchaseOrdersLink = `${WEBSITE_BASE_URL}/site/vendor/purchase-order-details/${formData.purchase_order_id}`;
+                    const subject = 'Purchase order has been approved';
+                    
+                    const html = `
+                            <p>The status of your purchase order <b>${purchaseOrderDetail?.data.po_number}</b> has been approved.</p><br>
+                            <a href="${purchaseOrdersLink}">View Purchase Orders</a>
+                        `;
+    
+                    sendEmailFunc(vendorDetail?.data?.EmailAddress, subject, html);
+                }
 
 
                 return response;
@@ -465,7 +499,7 @@ class OrdersService {
             });
 
             response = responePurchaseOrderUpdate;
-            
+
 
             // //--now insert new row for order status mapping
             // const columnsOrderStatusMapping: any = {
@@ -477,7 +511,7 @@ class OrdersService {
             // };
             // response = await dynamicDataInsertService("purchase_order_status_mapping", "order_status_mapping_id", null, true, columnsOrderStatusMapping);
 
-      
+
 
         } catch (error) {
             console.error('Error executing insert/update proudct details:', error);

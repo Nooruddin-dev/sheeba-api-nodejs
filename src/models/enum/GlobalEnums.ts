@@ -17,6 +17,7 @@ export const BusinessPartnerTypesEnum : any = {
     Pending = 1,
     Complete = 2,
     Cancel = 3,
+    Approve = 4,
   }
 
   export enum ProductionEntriesTypesEnum {

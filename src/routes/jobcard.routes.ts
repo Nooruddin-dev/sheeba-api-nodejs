@@ -16,6 +16,6 @@ jobCardRoutes.post('/insert-card-dispatch-info', jobCardController.insertCardDis
 jobCardRoutes.get('/get-job-dispatch-report-data', jobCardController.getJobDispatchReportDataApi);
 jobCardRoutes.get('/get-job-dispatch-report-data-by-id/:card_dispatch_info_id', jobCardController.getJobDispatchReportDataByIdApi);
 jobCardRoutes.get('/get-machine-based-report-api', jobCardController.getMachineBaseReportApi);
-
+jobCardRoutes.get('/get-all-products-for-production-entry', jobCardController.getAllProductsForProductionEntryApi);
 
 export default jobCardRoutes;
