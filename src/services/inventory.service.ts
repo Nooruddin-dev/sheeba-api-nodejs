@@ -60,6 +60,9 @@ class InventoryService {
                     short_description: formData.short_description,
                     sku: formData.sku,
                     stockquantity: formData.stockquantity,
+
+                    remaining_quantity: formData.stockquantity,
+                    
                     is_active: formData.is_active == true || formData?.is_active?.toString() == 'true' || formData?.is_active?.toString() == '1' ? 1 : 0,
                     price: formData.price,
                     unit_type: formData.unit_type,

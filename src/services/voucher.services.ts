@@ -27,7 +27,7 @@ class VoucherServices {
 
                 //--get purchase_orders_items
                 const [results_items]: any = await connection.query(`
-                    SELECT MTBL.*, prd.product_name
+                    SELECT MTBL.*, prd.product_name, prd.remaining_quantity
                     FROM purchase_orders_items MTBL
                     INNER JOIN products prd on prd.productid = MTBL.product_id
                     WHERE MTBL.purchase_order_id  = ${purchase_order_id} LIMIT 50;`);
@@ -224,10 +224,12 @@ class VoucherServices {
                                 //-- update product stock quantity
                                 const ledgerStockQuantity = await getProductQuantityFromLedger(element.product_id);
                                 const ledgerWeightResult = await getProductWeightValueFromLedger(element.product_id);
+                                const newRemainingQuantity = productDetail?.data.remaining_quantity - element.quantity;
 
                                 if (ledgerStockQuantity && ledgerStockQuantity.total_quantity > 0) {
                                     const columnsProducts: any = {
                                         stockquantity: ledgerStockQuantity.total_quantity,
+                                        remaining_quantity: newRemainingQuantity,
                                         weight_value: ledgerWeightResult.total_weight_quantity,
                                         updated_on: new Date(),
                                         updated_by: formData.createByUserId,
