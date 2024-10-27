@@ -9,7 +9,7 @@ import { calculateItemAmount } from '../utils/commonHelpers/OrderHelper';
 import { PurchaseOrderStatusTypesEnum } from '../models/enum/GlobalEnums';
 import { IPurchaseOrderStatusUpdateRequestForm } from '../models/orders/IPurchaseOrderStatusUpdateRequestForm';
 import { sendEmailFunc } from './EmailService';
-import { WEBSITE_BASE_URL } from '../configurations/config';
+import { SUPER_ADMIN_EMAIL, WEBSITE_BASE_URL } from '../configurations/config';
 import { v4 as uuidv4 } from 'uuid';
 
 
@@ -251,14 +251,14 @@ class OrdersService {
                 //Send email
                 const purchaseOrdersLink = `${WEBSITE_BASE_URL}/site/purchase-orders-list`
                 const subject = 'New Purchase Order Created';
-                const vendorDetail = await dynamicDataGetService("busnpartner", "BusnPartnerId" , formData.vendor_id); 
+      
                 const html = `
                         <b>A new purchase order has been created.</b><br>
                         <p>Order ID: ${poNumber}</p>
                         <a href="${purchaseOrdersLink}">View Purchase Orders</a>
                     `;
 
-                sendEmailFunc(vendorDetail?.data.EmailAddress, subject, html);
+                sendEmailFunc(SUPER_ADMIN_EMAIL, subject, html);
 
 
 

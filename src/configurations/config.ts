@@ -10,3 +10,5 @@ export const EmailConfiguration = {
     Password: "ncywafpmrmipzstr",
     EmailSetupHelpLink: "https://code-maze.com/aspnetcore-send-email/"
   }
+
+  export const SUPER_ADMIN_EMAIL = 'nashadmehsud888@gmail.com';
