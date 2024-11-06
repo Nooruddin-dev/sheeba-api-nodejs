@@ -744,6 +744,9 @@ class JobCardService {
                             card_dispatch_info_id: card_dispatch_info_id,
 
                             total_bags: element.total_bags,
+
+                            bagRollType: element.bagRollType,
+
                             quantity: element.quantity,
                             dispatch_unit_id: element.dispatch_unit_id,
                             net_weight: element.net_weight,
@@ -874,7 +877,7 @@ class JobCardService {
             const [results]: any = await connection.query(`
                 SELECT MTBL.production_entry_id, MTBL.job_card_id, MTBL.machine_id, MTBL.job_card_product_id, MTBL.waste_value, MTBL.net_value, 
                 MTBL.gross_value, MTBL.created_on AS prod_entry_date, PRD.product_name as item_name, JCM.job_card_no, MCT.machine_type_name,
-                JCM.job_size
+                JCM.job_size , MSN.machine_name
                 FROM job_production_entries MTBL
                 LEFT JOIN job_card_products JCP ON JCP.job_card_id = MTBL.job_card_id
                 LEFT JOIN products PRD ON PRD.productid = JCP.product_id
