@@ -157,21 +157,21 @@ class UserController {
       }
 
 
-      const busnPartnerByEmail = await this.userService.getBusinessPartnerByEmailService(model.emailAddress);
-      if (model.busnPartnerId != undefined && model.busnPartnerId > 0 && busnPartnerByEmail) {
+      // const busnPartnerByEmail = await this.userService.getBusinessPartnerByEmailService(model.emailAddress);
+      // if (model.busnPartnerId != undefined && model.busnPartnerId > 0 && busnPartnerByEmail) {
 
-        if ((busnPartnerByEmail.BusnPartnerId != model.busnPartnerId)) {
-          responseBody.responseMessage = 'Email address already exists!';
-          res.status(200).json({ Response: responseBody });
-          return;
-        }
-      } else {
-        if (busnPartnerByEmail && busnPartnerByEmail.BusnPartnerId > 0) {
-          responseBody.responseMessage = 'Email address already exists!';
-          res.status(200).json({ Response: responseBody });
-          return;
-        }
-      }
+      //   if ((busnPartnerByEmail.BusnPartnerId != model.busnPartnerId)) {
+      //     responseBody.responseMessage = 'Email address already exists!';
+      //     res.status(200).json({ Response: responseBody });
+      //     return;
+      //   }
+      // } else {
+      //   if (busnPartnerByEmail && busnPartnerByEmail.BusnPartnerId > 0) {
+      //     responseBody.responseMessage = 'Email address already exists!';
+      //     res.status(200).json({ Response: responseBody });
+      //     return;
+      //   }
+      // }
 
       const busnPartnerIdHeader = getBusnPartnerIdFromApiHeader(req);
       model.createByUserId = busnPartnerIdHeader;

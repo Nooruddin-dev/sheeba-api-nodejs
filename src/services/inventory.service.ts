@@ -61,7 +61,8 @@ class InventoryService {
                     sku: formData.sku,
                     stockquantity: formData.stockquantity,
 
-                    remaining_quantity: formData.stockquantity,
+                    remaining_quantity: 0,
+                    remaining_weight: 0,
                     
                     is_active: formData.is_active == true || formData?.is_active?.toString() == 'true' || formData?.is_active?.toString() == '1' ? 1 : 0,
                     price: formData.price,
@@ -109,7 +110,8 @@ class InventoryService {
                         foreign_key_table_name: 'products',
                         foreign_key_name: 'productid',
                         foreign_key_value: insertedProductId,
-                        quantity: formData.stockquantity,
+                        quantity: formData.stockquantity || 0,
+                        weight_quantity_value: formData.weight_value || 0,
                         action_type: ProductionEntriesTypesEnum.NewProductEntry,
 
                         created_at: new Date(),
@@ -220,8 +222,9 @@ class InventoryService {
 
         return withConnectionDatabase(async (connection: any) => {
             const [results]: any = await connection.query(`
-                SELECT MTBL.*
+                SELECT MTBL.*, u.unit_short_name
                 FROM products MTBL
+                JOIN units u on u.unit_id = MTBL.weight_unit_id
                 WHERE MTBL.productid  = ${productid};`);
 
             if (results) {

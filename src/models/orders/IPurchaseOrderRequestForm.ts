@@ -1,6 +1,6 @@
 interface ICartProduct {
     productid: number;
-    quantity: number;
+    weight_value: number;
     price: number;
 
     product_units_info: any;

@@ -429,7 +429,7 @@ class JobCardService {
             const primaryKeyName = 'production_entry_id';
 
             //-- get product id from job_card_products
-            const jobCardProduct = await dynamicDataGetService('job_card_products', 'job_card_product_id', formData.job_card_product_id);
+            // const jobCardProduct =  await dynamicDataGetService('job_card_products', 'job_card_product_id', formData.job_card_product_id);
 
             const machineInfo = await this.getMachineInfoForProductionEntry(formData.machine_id);
 
@@ -467,13 +467,13 @@ class JobCardService {
 
                 if (response?.success == true) {
 
-                    if (jobCardProduct?.data?.product_id > 0) {
+                    if (formData.job_card_product_id) {
                         //-- get product ledger info
                         // const formDataLedger = {productid: jobCardProduct?.data?.product_id}
                         // const productLedgerInfo = await this.getProductEntryLedgerInfo(formDataLedger);
                         let editNetValue = 0;
                         if (oldNetValue && oldNetValue != 0) {
-                            editNetValue = oldNetValue - parseFloat(formData?.net_value?.toString() ?? '0'); //-- old_value - new_value
+                            editNetValue = oldNetValue - parseFloat(formData?.gross_value?.toString() ?? '0'); //-- old_value - new_value
                         }
 
                         let editWeightValue = 0;
@@ -483,7 +483,7 @@ class JobCardService {
 
 
                         const columnsLedger: any = {
-                            productid: jobCardProduct?.data?.product_id,
+                            productid: formData.job_card_product_id,
                             foreign_key_table_name: 'job_production_entries',
                             foreign_key_name: 'production_entry_id',
                             foreign_key_value: formData.production_entry_id,
@@ -498,21 +498,17 @@ class JobCardService {
                         if (responseLedger?.success == true) {
 
                             //-- update product stock quantity
-                            const ledgerStockQuantity = await getProductQuantityFromLedger(jobCardProduct?.data?.product_id);
-                            const ledgerWeightResult = await getProductWeightValueFromLedger(jobCardProduct?.data?.product_id);
+                            const ledgerStockQuantity = await getProductQuantityFromLedger(formData.job_card_product_id);
+                            const ledgerWeightResult = await getProductWeightValueFromLedger(formData.job_card_product_id);
+                            const columnsProducts: any = {
+                                stockquantity: ledgerStockQuantity.total_quantity,
+                                weight_value: ledgerWeightResult.total_weight_quantity,
 
-                            if (ledgerStockQuantity && ledgerStockQuantity.total_quantity > 0) {
-                                const columnsProducts: any = {
-                                    stockquantity: ledgerStockQuantity.total_quantity,
-                                    weight_value: ledgerWeightResult.total_weight_quantity,
+                                updated_on: new Date(),
+                                updated_by: formData.createByUserId,
 
-                                    updated_on: new Date(),
-                                    updated_by: formData.createByUserId,
-
-                                };
-                                var responseOrderMain = await dynamicDataUpdateService('products', 'productid', jobCardProduct?.data?.product_id, columnsProducts);
-                            }
-
+                            };
+                            var responseOrderMain = await dynamicDataUpdateService('products', 'productid', formData.job_card_product_id, columnsProducts);
                         }
 
                     }
@@ -562,16 +558,16 @@ class JobCardService {
                 response = await dynamicDataInsertService(tableName, primaryKeyName, null, true, columns);
                 if (response?.success == true) {
 
-                    if (jobCardProduct?.data?.product_id > 0) {
+                    if (formData.job_card_product_id) {
 
                         const columnsLedger: any = {
-                            productid: jobCardProduct?.data?.product_id,
+                            productid: formData.job_card_product_id,
                             foreign_key_table_name: 'job_production_entries',
                             foreign_key_name: 'production_entry_id',
                             foreign_key_value: response?.primaryKeyValue,
 
                             quantity: -parseInt(formData.weight_value ?? '0'),
-                            weight_quantity_value: -parseInt(formData.net_value?.toString() ?? '0'),
+                            weight_quantity_value: -parseInt(formData.gross_value?.toString() ?? '0'),
 
                             action_type: ProductionEntriesTypesEnum.NewProductionEntry,
 
@@ -582,20 +578,16 @@ class JobCardService {
                         if (responseLedger?.success == true) {
 
                             //-- update product stock quantity
-                            const ledgerStockQuantity = await getProductQuantityFromLedger(jobCardProduct?.data?.product_id);
-                            const ledgerWeightResult = await getProductWeightValueFromLedger(jobCardProduct?.data?.product_id);
+                            const ledgerStockQuantity = await getProductQuantityFromLedger(formData.job_card_product_id);
+                            const ledgerWeightResult = await getProductWeightValueFromLedger(formData.job_card_product_id);
+                            const columnsProducts: any = {
+                                stockquantity: ledgerStockQuantity.total_quantity,
+                                weight_value: ledgerWeightResult.total_weight_quantity,
+                                updated_on: new Date(),
+                                updated_by: formData.createByUserId,
 
-                            if (ledgerStockQuantity && ledgerStockQuantity.total_quantity > 0) {
-                                const columnsProducts: any = {
-                                    stockquantity: ledgerStockQuantity.total_quantity,
-                                    weight_value: ledgerWeightResult.total_weight_quantity,
-                                    updated_on: new Date(),
-                                    updated_by: formData.createByUserId,
-
-                                };
-                                var responseOrderMain = await dynamicDataUpdateService('products', 'productid', jobCardProduct?.data?.product_id, columnsProducts);
-                            }
-
+                            };
+                            var responseOrderMain = await dynamicDataUpdateService('products', 'productid', formData.job_card_product_id, columnsProducts);
                         }
 
                     }

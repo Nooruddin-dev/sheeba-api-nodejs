@@ -145,10 +145,11 @@ class OrdersService {
                                 item_description: productDetail?.data?.short_description,
                                 code_sku: productDetail?.data?.sku,
 
-                                quantity: element.quantity,
+                                quantity: element.weight_value,
+                                weight: element.weight_value,
 
                                 po_rate: po_rate,
-                                amount: calculateItemAmount(po_rate, element.quantity),
+                                amount: calculateItemAmount(po_rate, element.weight_value),
 
                                 item_units_info_json: element.product_units_info && element.product_units_info.length > 0 ? JSON.stringify(element.product_units_info) : null,
 
@@ -161,6 +162,8 @@ class OrdersService {
                             }
                             var responseOrderItem = await dynamicDataInsertService(purchaseOrderItemsTableMainData.tableName, purchaseOrderItemsTableMainData.primaryKeyName,
                                 purchaseOrderItemsTableMainData.primaryKeyValue, purchaseOrderItemsTableMainData.isAutoIncremented, columnsPurchaseOrderItem);
+                            const prodColUpdate = { remaining_weight: (productDetail.data?.remaining_weight ?? 0) + element.weight_value };
+                            await dynamicDataUpdateService('products', 'productid', element.productid, prodColUpdate);
 
 
 
