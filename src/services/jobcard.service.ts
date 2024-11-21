@@ -868,7 +868,7 @@ class JobCardService {
 
             const [results]: any = await connection.query(`
                 SELECT MTBL.production_entry_id, MTBL.job_card_id, MTBL.machine_id, MTBL.job_card_product_id, MTBL.waste_value, MTBL.net_value, 
-                MTBL.gross_value, MTBL.created_on AS prod_entry_date, PRD.product_name as item_name, JCM.job_card_no, MCT.machine_type_name,
+                MTBL.gross_value, MTBL.tare_core, MTBL.created_on AS prod_entry_date, PRD.product_name as item_name, JCM.job_card_no, MCT.machine_type_name,
                 JCM.job_size , MSN.machine_name
                 FROM job_production_entries MTBL
                 LEFT JOIN job_card_products JCP ON JCP.job_card_id = MTBL.job_card_id

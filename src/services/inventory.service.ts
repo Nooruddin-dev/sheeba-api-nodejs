@@ -153,8 +153,10 @@ class InventoryService {
 
             const [results]: any = await connection.query(`
                 SELECT COUNT(*) OVER () as TotalRecords, 
-                MTBL.*
+                MTBL.*, u.*
                 FROM products MTBL
+                JOIN units u
+                on u.unit_id = MTBL.weight_unit_id
                 WHERE MTBL.productid IS NOT NULL
                 ${searchParameters}
                 ORDER BY MTBL.productid DESC
