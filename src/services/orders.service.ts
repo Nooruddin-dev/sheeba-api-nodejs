@@ -364,7 +364,7 @@ class OrdersService {
                 //--get purchase order items
                 const [resultsOrderItem]: any = await connection.query(`
                     SELECT 
-                    MTBL.*, prd.product_name as product_name
+                    MTBL.*, prd.product_name as product_name, prd.sku
                     FROM purchase_orders_items MTBL
                     inner join products prd on prd.productid =  MTBL.product_id
                     WHERE MTBL.purchase_order_id = ${orderMain.purchase_order_id} `);
@@ -372,6 +372,20 @@ class OrdersService {
                 const orderItem: any = resultsOrderItem;
                 orderMain.order_items = orderItem;
 
+                if (orderMain.order_items && orderMain.order_items.length > 0) {
+                    for (const element of orderMain.order_items) {
+
+                        const [resultUnitInfo]: any = await connection.query(`
+                            select MTBL.*, UNT.unit_short_name
+                            from inventory_units_info MTBL
+                            left join units UNT on UNT.unit_id = MTBL.unit_id
+                            WHERE MTBL.productid = ${element.product_id} `);
+                        
+                        const resultUnitInfoArray: any = resultUnitInfo;
+                        element.inventory_units_info = resultUnitInfoArray;
+
+                    }
+                }
 
 
             }

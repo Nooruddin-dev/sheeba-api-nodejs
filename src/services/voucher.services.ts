@@ -215,7 +215,7 @@ class VoucherServices {
                                 weight_quantity_value: parseInt(element.weight_value?.toString() ?? '0'),
 
                                 action_type: ProductionEntriesTypesEnum.NewGRN,
-        
+
                                 created_at: new Date(),
                             };
                             const responseLedger = await dynamicDataInsertService('inventory_ledger', 'ledger_id', null, true, columnsLedger);
@@ -235,7 +235,7 @@ class VoucherServices {
                                     remaining_quantity: newRemainingQuantity,
                                 };
                                 await dynamicDataUpdateService('products', 'productid', element.product_id, columnsProducts);
-        
+
                             }
 
                             // const columnsProduct: any = {
@@ -395,6 +395,20 @@ class VoucherServices {
 
                 const grnVoucherItems: any = resultsGrnVoucherItem;
                 grnVoucherMain.grn_voucher_line_items = grnVoucherItems;
+                if (grnVoucherMain.grn_voucher_line_items && grnVoucherMain.grn_voucher_line_items.length > 0) {
+                    for (const element of grnVoucherMain.grn_voucher_line_items) {
+
+                        const [resultUnitInfo]: any = await connection.query(`
+                            select MTBL.*, UNT.unit_short_name
+                            from inventory_units_info MTBL
+                            left join units UNT on UNT.unit_id = MTBL.unit_id
+                            WHERE MTBL.productid = ${element.product_id} `);
+                        
+                        const resultUnitInfoArray: any = resultUnitInfo;
+                        element.inventory_units_info = resultUnitInfoArray;
+
+                    }
+                }
             }
 
             return grnVoucherMain;
