@@ -83,6 +83,7 @@ class JobCardService {
                     micron: formData.micron,
                     sealing_method: formData.sealing_method,
                     job_card_reference: formData.job_card_reference,
+                    po_reference: formData.po_reference,
                     special_request: formData.special_request,
 
                     card_rate: formData.card_rate,
@@ -198,6 +199,7 @@ class JobCardService {
                     micron: formData.micron,
                     sealing_method: formData.sealing_method,
                     job_card_reference: formData.job_card_reference,
+                    po_reference: formData.po_reference,
                     special_request: formData.special_request,
 
                     card_rate: formData.card_rate,

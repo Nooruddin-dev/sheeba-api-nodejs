@@ -21,6 +21,7 @@ export interface IJobCardRequestForm {
     micron?: string;
     sealing_method?: string;
     job_card_reference?: string;
+    po_reference?: string;
     special_request?: string;
 
     card_rate?: number;
