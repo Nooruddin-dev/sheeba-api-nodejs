@@ -1,6 +1,6 @@
 import { Pool } from 'mysql2/promise';
 import { ServiceResponseInterface } from '../models/common/ServiceResponseInterface';
-import { dynamicDataGetService, dynamicDataInsertService, dynamicDataUpdateService } from './dynamic.service';
+import { dynamicDataGetService, dynamicDataGetServiceWithConnection, dynamicDataInsertService, dynamicDataInsertServiceNew, dynamicDataUpdateService, dynamicDataUpdateServiceWithConnection } from './dynamic.service';
 import InventoryService from './inventory.service';
 import { IPurchaseOrderRequestForm } from '../models/orders/IPurchaseOrderRequestForm';
 import { connectionPool, withConnectionDatabase } from '../configurations/db';
@@ -254,7 +254,7 @@ class OrdersService {
                 //Send email
                 const purchaseOrdersLink = `${WEBSITE_BASE_URL}/site/purchase-orders-list`
                 const subject = 'New Purchase Order Created';
-      
+
                 const html = `
                         <b>A new purchase order has been created.</b><br>
                         <p>Order ID: ${poNumber}</p>
@@ -275,6 +275,230 @@ class OrdersService {
 
         return responseOrderInsert;
     }
+
+
+    public async createPurchaseOrderServiceNew(formData: IPurchaseOrderRequestForm): Promise<ServiceResponseInterface> {
+        let responseOrderInsert: ServiceResponseInterface = {
+            success: false,
+            responseMessage: '',
+            primaryKeyValue: null
+        };
+
+        const connection = await connectionPool.getConnection();
+
+        try {
+            // Begin the transaction
+            await connection.beginTransaction();
+
+            //--Insert into purchase order table
+            let purchaseOrderTableMainData = {
+                tableName: 'purchase_orders',
+                primaryKeyName: 'purchase_order_id',
+                primaryKeyValue: null,
+                isAutoIncremented: true
+            }
+
+            const columnsPurchaseOrder: any = {
+                po_number: '', //--formated auto number like : '0000001'
+                po_reference: formData.po_reference,
+                delivery_date: formData.delivery_date,
+                company_name: formData.company_name,
+                order_date: formData.order_date,
+                vendor_id: formData.vendor_id,
+                sale_representative_id: formData.sale_representative_id,
+                purchaser_name: formData.purchaser_name,
+                payment_terms: formData.payment_terms,
+                remarks: formData.remarks,
+                show_company_detail: formData.show_company_detail,
+                // order_tax_total: formData.orderLevelTaxAmount,
+                order_total: formData.orderTotal,
+                order_guid: uuidv4(),
+
+                created_on: new Date(),
+                created_by: formData.createByUserId,
+
+
+            };
+
+            responseOrderInsert = await dynamicDataInsertServiceNew(purchaseOrderTableMainData.tableName, purchaseOrderTableMainData.primaryKeyName, purchaseOrderTableMainData.primaryKeyValue,
+                purchaseOrderTableMainData.isAutoIncremented, columnsPurchaseOrder, connection);
+            if (responseOrderInsert && responseOrderInsert.success == true && responseOrderInsert.primaryKeyValue) {
+
+                const order_id = responseOrderInsert.primaryKeyValue;
+
+
+                //--inser into purchase order items
+                let purchaseOrderItemsTableMainData = {
+                    tableName: 'purchase_orders_items',
+                    primaryKeyName: 'line_item_id',
+                    primaryKeyValue: null,
+                    isAutoIncremented: true
+                }
+
+                if (formData.cartAllProducts && formData.cartAllProducts.length > 0) {
+
+                    for (const element of formData.cartAllProducts) {
+
+                        //--get product details by id
+                        var productDetail = await dynamicDataGetServiceWithConnection('products', 'productid', element.productid, connection);
+
+                        if (productDetail && productDetail?.data && productDetail?.data?.productid > 0) {
+
+                            let po_rate: number = element.price;
+
+                            const columnsPurchaseOrderItem: any = {
+                                purchase_order_id: order_id,
+                                item_name: productDetail?.data?.product_name,
+                                product_id: element.productid,
+                                item_description: productDetail?.data?.short_description,
+                                code_sku: productDetail?.data?.sku,
+
+                                quantity: element.weight_value,
+                                weight: element.weight_value,
+
+                                po_rate: po_rate,
+                                amount: calculateItemAmount(po_rate, element.weight_value),
+
+                                item_units_info_json: element.product_units_info && element.product_units_info.length > 0 ? JSON.stringify(element.product_units_info) : null,
+
+                                tax_percent: element.itemTaxPercent,
+
+                                tax_rate_type: element.tax_rate_type,
+                                tax_amount: element.itemTotalTax,
+
+                                item_total: element.itemTotal
+                            }
+                            var responseOrderItem = await dynamicDataInsertServiceNew(purchaseOrderItemsTableMainData.tableName, purchaseOrderItemsTableMainData.primaryKeyName,
+                                purchaseOrderItemsTableMainData.primaryKeyValue, purchaseOrderItemsTableMainData.isAutoIncremented, columnsPurchaseOrderItem, connection);
+                            const prodColUpdate = { remaining_weight: (productDetail.data?.remaining_weight ?? 0) + element.weight_value };
+                            await dynamicDataUpdateServiceWithConnection('products', 'productid', element.productid, prodColUpdate, connection);
+
+
+
+
+                            //--update item inventory by reducing the quanity of product here
+                            // const columnsProduct: any = {
+                            //     stockquantity: parseInt(productDetail.data.stockquantity) - parseInt(element.quantity?.toString() ?? '0'),
+                            //     updated_on: new Date(),
+                            //     updated_by: formData.createByUserId,
+
+                            // };
+
+                            // var responseProduct = await dynamicDataUpdateService('products', 'productid', element.productid, columnsProduct);
+
+
+
+                            //--update order item tax if any
+                            if (element.tax_rate_type != undefined && element.tax_rate_type != null && stringIsNullOrWhiteSpace(element.tax_rate_type) == false) {
+                                const columnsOrderItemTax: any = {
+                                    purchase_order_id: order_id,
+                                    line_item_id: responseOrderItem.primaryKeyValue,
+                                    tax_rate_type: element.tax_rate_type,
+                                    tax_value: element.tax_value,
+                                    order_tax_amount: element.itemTotalTax,
+                                    created_on: new Date(),
+                                    created_by: formData.createByUserId,
+
+                                };
+                                var responseOrderTAx = await dynamicDataInsertServiceNew('order_taxes', 'order_tax_id',
+                                    null, true, columnsOrderItemTax, connection);
+                            }
+
+                        }
+
+                    }
+
+                }
+
+
+                //--update order item tax if any
+                if (formData.orderLevelTaxRateType && !stringIsNullOrWhiteSpace(formData.orderLevelTaxRateType) && (formData.orderLevelTaxAmount && formData.orderLevelTaxAmount > 0)) {
+                    const columnsOrderItemTax: any = {
+                        purchase_order_id: order_id,
+                        line_item_id: null,
+                        tax_rate_type: formData.orderLevelTaxRateType,
+                        tax_value: formData.orderLevelTaxValue,
+                        order_tax_amount: formData.orderLevelTaxAmount,
+                        created_on: new Date(),
+                        created_by: formData.createByUserId,
+
+                    };
+                    const responseOrderTAx = await dynamicDataInsertServiceNew('order_taxes', 'order_tax_id',
+                        null, true, columnsOrderItemTax, connection);
+                }
+
+
+                var purchaseOrderAllTaxes = await this.getPurchaseOrderTaxesByOrderId(order_id);
+                let totalTaxOfOrder = 0;
+                if (purchaseOrderAllTaxes && purchaseOrderAllTaxes.length > 0) {
+                    const columnNameTax = "order_tax_amount";
+                    totalTaxOfOrder = purchaseOrderAllTaxes.reduce((sum: any, item: { order_tax_amount: any; }) => parseInt(sum + parseInt(item.order_tax_amount)), 0);
+                }
+
+                //--update purchase order 'po_number
+                const poNumber = 'PO' + order_id?.toString().padStart(7, '0');
+                const columnsOrderUpdate: any = {
+                    po_number: poNumber,
+                    order_tax_total: totalTaxOfOrder,
+                    updated_on: new Date(),
+                    updated_by: formData.createByUserId,
+
+                };
+                var responseOrderMain = await dynamicDataUpdateServiceWithConnection('purchase_orders', 'purchase_order_id', order_id, columnsOrderUpdate, connection);
+
+
+                //--insert into order status mapping table "purchase_order_status_mapping"
+                const columnsOrderStatusMappings: any = {
+                    purchase_order_id: order_id,
+                    status_id: PurchaseOrderStatusTypesEnum.Pending,
+                    is_active: 1,
+                    created_on: new Date(),
+                    created_by: formData.createByUserId,
+                };
+                const responseOrderStatusMapping = await dynamicDataInsertServiceNew('purchase_order_status_mapping', 'order_status_mapping_id',
+                    null, true, columnsOrderStatusMappings, connection);
+
+
+                //Send email
+                const purchaseOrdersLink = `${WEBSITE_BASE_URL}/site/purchase-orders-list`
+                const subject = 'New Purchase Order Created';
+
+                const html = `
+                        <b>A new purchase order has been created.</b><br>
+                        <p>Order ID: ${poNumber}</p>
+                        <a href="${purchaseOrdersLink}">View Purchase Orders</a>
+                    `;
+
+                sendEmailFunc(SUPER_ADMIN_EMAIL, subject, html);
+
+
+
+            }
+
+            //--Commit the transaction if all inserts/updates are successful
+            await connection.commit();
+
+        } catch (error) {
+            console.error('Transaction error:', error);
+
+            //--Rollback the transaction on error
+            await connection.rollback();
+            throw error;
+        } finally {
+            if (connection) {
+                if (typeof connection.release === 'function') {
+                    await connection.release();
+                } else if (typeof connection.end === 'function') {
+                    await connection.end();
+                }
+
+            }
+        }
+
+        return responseOrderInsert;
+    }
+
+
 
     public async getAllPurchaseOrdersListService(FormData: any): Promise<any> {
 
@@ -380,7 +604,7 @@ class OrdersService {
                             from inventory_units_info MTBL
                             left join units UNT on UNT.unit_id = MTBL.unit_id
                             WHERE MTBL.productid = ${element.product_id} `);
-                        
+
                         const resultUnitInfoArray: any = resultUnitInfo;
                         element.inventory_units_info = resultUnitInfoArray;
 
@@ -494,19 +718,19 @@ class OrdersService {
                 response = await dynamicDataInsertService("purchase_order_status_mapping", "order_status_mapping_id", null, true, columnsOrderStatusMapping);
 
                 //--now send email to vendor on status approval
-                if(formData.status_id == PurchaseOrderStatusTypesEnum.Approve){
-                    const purchaseOrderDetail = await dynamicDataGetService("purchase_orders", "purchase_order_id" , formData.purchase_order_id);
+                if (formData.status_id == PurchaseOrderStatusTypesEnum.Approve) {
+                    const purchaseOrderDetail = await dynamicDataGetService("purchase_orders", "purchase_order_id", formData.purchase_order_id);
                     const orderVendorId = purchaseOrderDetail?.data?.vendor_id;
-                    const vendorDetail = await dynamicDataGetService("busnpartner", "BusnPartnerId" , orderVendorId);
+                    const vendorDetail = await dynamicDataGetService("busnpartner", "BusnPartnerId", orderVendorId);
 
                     const purchaseOrdersLink = `${WEBSITE_BASE_URL}/site/vendor/purchase-order-details/${formData.purchase_order_id}`;
                     const subject = 'Purchase order has been approved';
-                    
+
                     const html = `
                             <p>The status of your purchase order <b>${purchaseOrderDetail?.data.po_number}</b> has been approved.</p><br>
                             <a href="${purchaseOrdersLink}">View Purchase Orders</a>
                         `;
-    
+
                     sendEmailFunc(vendorDetail?.data?.EmailAddress, subject, html);
                 }
 

@@ -27,5 +27,6 @@ export const sendEmailFunc = async (to: string, subject: string, html: any) => {
         console.log('Message sent: %s', info.messageId);
     } catch (error) {
         console.error('Error sending email:', error);
+        throw error;
     }
 };

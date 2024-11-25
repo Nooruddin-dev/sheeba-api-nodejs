@@ -54,7 +54,8 @@ class OrdersController {
 
 
 
-            const response = await this.ordersService.createPurchaseOrderService(model);
+            //const response = await this.ordersService.createPurchaseOrderService(model);
+            const response = await this.ordersService.createPurchaseOrderServiceNew(model);
 
 
             res.status(200).json({ Response: response });
