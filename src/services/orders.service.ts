@@ -179,7 +179,7 @@ class OrdersService {
                     created_on: new Date(),
                     created_by: formData.created_by_user_id,
                 };
-                 await dynamicDataInsertServiceNew('purchase_order_status_mapping', 'order_status_mapping_id',
+                await dynamicDataInsertServiceNew('purchase_order_status_mapping', 'order_status_mapping_id',
                     null, true, columnsOrderStatusMappings, connection);
 
 
@@ -398,10 +398,6 @@ class OrdersService {
 
         try {
 
-
-
-
-
             //--First update existing order status mapping
             var responePurchaseOrderUpdate = await withConnectionDatabase(async (connection: any) => {
                 let response: ServiceResponseInterface = {
@@ -426,7 +422,7 @@ class OrdersService {
                     response.responseMessage = 'No rows were updated!';
                 }
 
-                //--now insert new row for order status mapping
+                // --now insert new row for order status mapping
                 const columnsOrderStatusMapping: any = {
                     purchase_order_id: formData.purchase_order_id,
                     status_id: formData.status_id,
@@ -439,17 +435,23 @@ class OrdersService {
                 //--now send email to vendor on status approval
                 if (formData.status_id == PurchaseOrderStatusTypesEnum.Approve) {
                     const purchaseOrderDetail = await dynamicDataGetService("purchase_orders", "purchase_order_id", formData.purchase_order_id);
+
+                    const promises: any[] = [];
+                    const [result, _] = await connection.query('select product_id, weight from purchase_orders_items poi where poi.purchase_order_id = ?', formData.purchase_order_id);
+                    result.forEach((item: any) => {
+                        promises.push(connection.query('update products p set remaining_weight = p.remaining_weight + ? where p.productid = ?', [parseFloat(item.weight || 0), item.product_id]));
+                    });
+                    await Promise.all(promises);
+
+                    // Send email
                     const orderVendorId = purchaseOrderDetail?.data?.vendor_id;
                     const vendorDetail = await dynamicDataGetService("busnpartner", "BusnPartnerId", orderVendorId);
-
                     const purchaseOrdersLink = `${WEBSITE_BASE_URL}/site/vendor/purchase-order-details/${formData.purchase_order_id}`;
                     const subject = 'Purchase order has been approved';
-
                     const html = `
                             <p>The status of your purchase order <b>${purchaseOrderDetail?.data.po_number}</b> has been approved.</p><br>
                             <a href="${purchaseOrdersLink}">View Purchase Orders</a>
                         `;
-
                     sendEmailFunc(vendorDetail?.data?.EmailAddress, subject, html);
                 }
 

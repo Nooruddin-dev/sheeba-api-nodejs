@@ -78,10 +78,9 @@ class VoucherServices {
                 LEFT JOIN (
                   SELECT DISTINCT purchase_order_id, status_id
                   FROM purchase_order_status_mapping
-                  WHERE status_id  = 1 AND is_active = 1
+                  WHERE status_id  = 4 AND is_active = 1
                 ) ExcludeOrders ON MTBL.purchase_order_id = ExcludeOrders.purchase_order_id
-
-                WHERE ExcludeOrders.status_id = 1 
+                WHERE ExcludeOrders.status_id = 4 
                 ${searchParameters}
                 ORDER BY MTBL.purchase_order_id DESC
                 LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
