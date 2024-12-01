@@ -16,18 +16,12 @@ class OrdersController {
 
     public createPurchaseOrder = async (req: Request, res: Response) => {
         try {
-
-
-
             const model: IPurchaseOrderRequestForm = req.body;
-
             const responseBody: ServiceResponseInterface = {
                 success: false,
                 responseMessage: '',
                 primaryKeyValue: null
             };
-
-
 
             if (stringIsNullOrWhiteSpace(model.po_reference) || stringIsNullOrWhiteSpace(model.delivery_date)
                 || stringIsNullOrWhiteSpace(model.company_name) || stringIsNullOrWhiteSpace(model.order_date) || stringIsNullOrWhiteSpace(model.vendor_id)
@@ -38,28 +32,18 @@ class OrdersController {
             }
 
             model.show_company_detail = model.show_company_detail == undefined ? true : model.show_company_detail;
-
-            if (model.cartAllProducts == undefined || model.cartAllProducts == null || model.cartAllProducts?.length < 1) {
+            if (model.products == undefined || model.products == null || model.products?.length < 1) {
                 responseBody.responseMessage = 'Please select at least one product!';
                 res.status(200).json({ Response: responseBody });
                 return;
             }
 
 
-
-
-
             const busnPartnerIdHeader = getBusnPartnerIdFromApiHeader(req);
-            model.createByUserId = busnPartnerIdHeader;
+            model.created_by_user_id = busnPartnerIdHeader;
 
-
-
-            //const response = await this.ordersService.createPurchaseOrderService(model);
             const response = await this.ordersService.createPurchaseOrderServiceNew(model);
-
-
             res.status(200).json({ Response: response });
-
         } catch (error) {
             console.error(error);
             res.status(500).json({ message: 'Error processing request', error });

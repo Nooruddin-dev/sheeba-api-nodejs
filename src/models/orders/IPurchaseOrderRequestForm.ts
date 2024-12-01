@@ -1,17 +1,18 @@
 interface ICartProduct {
-    productid: number;
-    weight_value: number;
+    product_id: number;
+    weight: number;
     price: number;
-
     product_units_info: any;
-
-
-    product_tax_rule_id: number;
-    itemTaxPercent: number;
-    itemTotalTax: number;
-    tax_value?: number;
-    tax_rate_type?: any
-    itemTotal: number;
+    subtotal: number;
+    tax_1_percentage: number;
+    tax_1_amount: number;
+    tax_2_percentage: number;
+    tax_2_amount: number;
+    tax_3_percentage: number;
+    tax_3_amount: number;
+    discount: number;
+    total_tax: number;
+    total: number;
 }
 
 export interface IPurchaseOrderRequestForm {
@@ -25,12 +26,13 @@ export interface IPurchaseOrderRequestForm {
     payment_terms: string;
     remarks: string;
     show_company_detail: boolean;
-    cartAllProducts: ICartProduct[];
-    orderTotal: number;
-
-    orderLevelTaxRateType?: number;
-    orderLevelTaxValue?: number;
-    orderLevelTaxAmount?: number;
-
-    createByUserId?: number;
+    products: ICartProduct[];
+    order_total: number;
+    order_tax_percentage?: number;
+    order_tax_amount?: number;
+    order_discount?: number;
+    order_total_tax?: number;
+    order_total_discount?: number;
+    order_subtotal?: number;
+    created_by_user_id?: number;
 }

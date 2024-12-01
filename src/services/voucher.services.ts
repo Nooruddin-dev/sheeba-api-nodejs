@@ -121,7 +121,6 @@ class VoucherServices {
 
 
     public async createGrnVoucherService(formData: IGrnVoucherCreateRequestForm): Promise<ServiceResponseInterface> {
-
         let responseGrnVoucherInsert: ServiceResponseInterface = {
             success: false,
             responseMessage: '',
@@ -129,36 +128,26 @@ class VoucherServices {
         };
 
         try {
-
-
-
             //--Insert into grn_voucher table
             const columnsGrnVoucher: any = {
-                voucher_number: '', //--formated auto number like : 'GR000001'
+                voucher_number: '', //--formatted auto number like : 'GR000001'
                 po_number: formData.po_number,
                 purchase_order_id: formData.purchase_order_id,
                 receiver_name: formData.receiver_name,
                 receiver_contact: formData.receiver_contact,
                 grn_date: formData.grn_date,
                 show_company_detail: formData.show_company_detail,
-
-                // order_tax_total: formData.orderLevelTaxAmount,
-                grn_toal_amount: formData.orderTotal,
-                grn_tax_total: 0,
-
+                subtotal: formData.subtotal,
+                total: formData.total,
                 created_on: new Date(),
-                created_by: formData.createByUserId,
-
-
+                created_by: formData.created_by_user_id,
             };
 
             responseGrnVoucherInsert = await dynamicDataInsertService("grn_voucher", "voucher_id", null, true, columnsGrnVoucher);
             if (responseGrnVoucherInsert && responseGrnVoucherInsert.success == true && responseGrnVoucherInsert.primaryKeyValue) {
 
                 const voucher_id = responseGrnVoucherInsert.primaryKeyValue;
-
-
-                //--inser into grn_voucher_line_items
+                //--insert into grn_voucher_line_items
                 let grnVoucherLineItems = {
                     tableName: 'grn_voucher_line_items',
                     primaryKeyName: 'grn_line_item_id',
@@ -166,36 +155,24 @@ class VoucherServices {
                     isAutoIncremented: true
                 }
 
-                if (formData.cartGrnVoucherLineItems && formData.cartGrnVoucherLineItems.length > 0) {
-
-                    for (const element of formData.cartGrnVoucherLineItems) {
-
+                if (formData.products && formData.products.length > 0) {
+                    for (const element of formData.products) {
                         //--get product details by id
                         var productDetail = await dynamicDataGetService('products', 'productid', element.product_id);
-
                         if (productDetail && productDetail?.data && productDetail?.data?.productid > 0) {
-
-
                             const columnGrnVoucherLineItem: any = {
                                 voucher_id: voucher_id,
                                 product_id: element.product_id,
                                 order_line_item_id: element.order_line_item_id,
                                 product_name: productDetail?.data?.product_name,
                                 product_sku_code: element.product_sku_code,
-
                                 quantity: element.quantity,
-                                weight_value: element.weight_value,
-
-
-                                po_rate: element.po_rate,
-                                amount: element.amount,
-                                item_tax_amount_total: element.item_tax_amount_total,
-                                tax_rate_type: element.tax_rate_type,
-                                grn_item_total: element.grn_item_total,
-
-
+                                weight: element.weight,
+                                cost: element.cost,
+                                cost_inclusive: element.cost_inclusive,
+                                total: element.total,
                             }
-                            var responseGrnLineItem = await dynamicDataInsertService(grnVoucherLineItems.tableName, grnVoucherLineItems.primaryKeyName,
+                            await dynamicDataInsertService(grnVoucherLineItems.tableName, grnVoucherLineItems.primaryKeyName,
                                 grnVoucherLineItems.primaryKeyValue, grnVoucherLineItems.isAutoIncremented, columnGrnVoucherLineItem);
 
 
@@ -210,27 +187,23 @@ class VoucherServices {
                                 foreign_key_table_name: 'grn_voucher',
                                 foreign_key_name: 'voucher_id',
                                 foreign_key_value: voucher_id,
-                                quantity: parseInt(element.quantity?.toString() ?? '0'),
-
-                                weight_quantity_value: parseInt(element.weight_value?.toString() ?? '0'),
-
+                                quantity: parseFloat(element.quantity?.toString() ?? '0'),
+                                weight_quantity_value: parseFloat(element.weight?.toString() ?? '0'),
                                 action_type: ProductionEntriesTypesEnum.NewGRN,
-
                                 created_at: new Date(),
                             };
                             const responseLedger = await dynamicDataInsertService('inventory_ledger', 'ledger_id', null, true, columnsLedger);
                             if (responseLedger?.success == true) {
-
                                 //-- update product stock quantity
                                 const ledgerStockQuantity = await getProductQuantityFromLedger(element.product_id);
                                 const ledgerWeightResult = await getProductWeightValueFromLedger(element.product_id);
                                 const newRemainingQuantity = (productDetail?.data.remaining_quantity ?? 0) - element.quantity;
-                                const newRemainingWeight = (productDetail?.data.remaining_weight ?? 0) - element.weight_value;
+                                const newRemainingWeight = (productDetail?.data.remaining_weight ?? 0) - element.weight;
                                 const columnsProducts: any = {
                                     remaining_weight: newRemainingWeight,
                                     weight_value: ledgerWeightResult.total_weight_quantity,
                                     updated_on: new Date(),
-                                    updated_by: formData.createByUserId,
+                                    updated_by: formData.created_by_user_id,
                                     stockquantity: ledgerStockQuantity.total_quantity,
                                     remaining_quantity: newRemainingQuantity,
                                 };
@@ -238,47 +211,15 @@ class VoucherServices {
 
                             }
 
-                            // const columnsProduct: any = {
-                            //     stockquantity: parseInt(productDetail.data.stockquantity) + parseInt(element.quantity?.toString() ?? '0'),
-                            //     reel_quanity: reel_quanity,
-                            //     updated_on: new Date(),
-                            //     updated_by: formData.createByUserId,
-
-                            // };
-                            // var responseProduct = await dynamicDataUpdateService('products', 'productid', element.product_id, columnsProduct);
-
-
                             //-- get purchase order line item by id
                             var purchaseOrderLineItemDetail = await dynamicDataGetService('purchase_orders_items', 'line_item_id', element.order_line_item_id);
                             if (purchaseOrderLineItemDetail) {
                                 //--update receiving_grn_quantity in purchase_orders_items when ever grn created.
                                 const columnsPurchaseOrderItem: any = {
-                                    receiving_grn_quantity: parseInt(purchaseOrderLineItemDetail?.data?.receiving_grn_quantity ?? 0) + parseInt(element.quantity?.toString() ?? '0'),
-                                    // updated_on: new Date(),
-                                    // updated_by: formData.createByUserId,
-
+                                    receiving_grn_quantity: parseFloat(purchaseOrderLineItemDetail?.data?.receiving_grn_quantity || '0') + element.quantity,
                                 };
-                                var responsePurchaseOrderItem = await dynamicDataUpdateService('purchase_orders_items', 'line_item_id', element.order_line_item_id, columnsPurchaseOrderItem);
+                                await dynamicDataUpdateService('purchase_orders_items', 'line_item_id', element.order_line_item_id, columnsPurchaseOrderItem);
 
-                            }
-
-
-
-
-                            //--insert into grn_voucher_taxes
-                            if (element.tax_rate_type != undefined && element.tax_rate_type != null && stringIsNullOrWhiteSpace(element.tax_rate_type) == false) {
-                                const columnsOrderItemTax: any = {
-                                    voucher_id: voucher_id,
-                                    grn_line_item_id: responseGrnLineItem.primaryKeyValue,
-                                    tax_rate_type: element.tax_rate_type,
-                                    tax_value: element.tax_value,
-                                    voucher_tax_amount: element.item_tax_amount_total,
-                                    created_on: new Date(),
-                                    created_by: formData.createByUserId,
-
-                                };
-                                var responseGrnOrderItemTaxTAx = await dynamicDataInsertService('grn_voucher_taxes', 'grn_voucher_tax_id',
-                                    null, true, columnsOrderItemTax);
                             }
 
                         }
@@ -287,47 +228,20 @@ class VoucherServices {
 
                 }
 
-
-                //--insert grn voucher master level taxe
-                if (formData.orderLevelTaxRateType && !stringIsNullOrWhiteSpace(formData.orderLevelTaxRateType) && (formData.orderLevelTaxAmount && formData.orderLevelTaxAmount > 0)) {
-                    const columnsOrderItemTax: any = {
-                        voucher_id: voucher_id,
-                        grn_line_item_id: null,
-                        tax_rate_type: formData.orderLevelTaxRateType,
-                        tax_value: formData.orderLevelTaxValue,
-                        voucher_tax_amount: formData.orderLevelTaxAmount,
-                        created_on: new Date(),
-                        created_by: formData.createByUserId,
-
-                    };
-                    const responseOrderTAx = await dynamicDataInsertService('grn_voucher_taxes', 'grn_voucher_tax_id',
-                        null, true, columnsOrderItemTax);
-                }
-
-
-                var grnVoucherAllTaxes = await this.getGrnVoucherTaxesByVoucherId(voucher_id);
-                let totalTaxOfGrnVoucher = 0;
-                if (grnVoucherAllTaxes && grnVoucherAllTaxes.length > 0) {
-                    totalTaxOfGrnVoucher = grnVoucherAllTaxes.reduce((sum: any, item: { voucher_tax_amount: any; }) => parseInt(sum + parseInt(item.voucher_tax_amount)), 0);
-                }
-
                 //--update GRN Voucher 'voucher_number
                 const voucher_number = 'GR' + voucher_id?.toString().padStart(7, '0');
                 const columnsOrderUpdate: any = {
                     voucher_number: voucher_number,
-                    grn_tax_total: totalTaxOfGrnVoucher,
                     updated_on: new Date(),
-                    updated_by: formData.createByUserId,
+                    updated_by: formData.created_by_user_id,
 
                 };
-                var responseOrderMain = await dynamicDataUpdateService('grn_voucher', 'voucher_id', voucher_id, columnsOrderUpdate);
-
-
+                await dynamicDataUpdateService('grn_voucher', 'voucher_id', voucher_id, columnsOrderUpdate);
             }
 
 
         } catch (error) {
-            console.error('Error executing insert/update machine details:', error);
+            console.error('error while creating grn:', error);
             throw error;
         }
 

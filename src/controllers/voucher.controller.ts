@@ -88,18 +88,12 @@ class VoucherController {
 
     public createGrnVoucherApi = async (req: Request, res: Response) => {
         try {
-
-
-
             const model: IGrnVoucherCreateRequestForm = req.body;
-
             const responseBody: ServiceResponseInterface = {
                 success: false,
                 responseMessage: '',
                 primaryKeyValue: null
             };
-
-
 
             if (stringIsNullOrWhiteSpace(model.po_number) || stringIsNullOrWhiteSpace(model.receiver_name)
                 || stringIsNullOrWhiteSpace(model.receiver_contact) || stringIsNullOrWhiteSpace(model.grn_date)) {
@@ -109,27 +103,17 @@ class VoucherController {
             }
 
             model.show_company_detail = model.show_company_detail == undefined ? true : model.show_company_detail;
-
-            if (model.cartGrnVoucherLineItems == undefined || model.cartGrnVoucherLineItems == null || model.cartGrnVoucherLineItems?.length < 1) {
+            if (model.products == undefined || model.products == null || model.products?.length < 1) {
                 responseBody.responseMessage = 'Please select order items!';
-                res.status(200).json({ Response: responseBody });
+                res.status(400).json({ Response: responseBody });
                 return;
             }
 
-
-
-
-
             const busnPartnerIdHeader = getBusnPartnerIdFromApiHeader(req);
-            model.createByUserId = busnPartnerIdHeader;
-
-
+            model.created_by_user_id = busnPartnerIdHeader;
 
             const response = await this.voucherService.createGrnVoucherService(model);
-
-
             res.status(200).json({ Response: response });
-
         } catch (error) {
             console.error(error);
             res.status(500).json({ message: 'Error processing request', error });

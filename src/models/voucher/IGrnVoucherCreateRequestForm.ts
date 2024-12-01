@@ -4,18 +4,11 @@ interface ICartGrnVoucherLineItems {
     product_id: number;
     order_line_item_id: number;
     product_sku_code: string;
-
     quantity: number;
-    weight_value: number;
-
-    po_rate: number;
-    amount: number;
- 
-    tax_percent: number;
-    item_tax_amount_total: number;
-    tax_value?: number;
-    tax_rate_type?: any
-    grn_item_total: number;
+    weight: number;
+    cost: number;
+    cost_inclusive: number;
+    total: number;
 }
 
 export interface IGrnVoucherCreateRequestForm {
@@ -25,14 +18,9 @@ export interface IGrnVoucherCreateRequestForm {
     receiver_contact: string;
     grn_date: string; // Use string if date is represented in ISO format, otherwise Date
     show_company_detail: boolean;
-
-    cartGrnVoucherLineItems: ICartGrnVoucherLineItems[];
-    orderTotal: number;
-
-    orderLevelTaxRateType?: number;
-    orderLevelTaxValue?: number;
-    orderLevelTaxAmount?: number;
-
-    createByUserId?: number;
+    products: ICartGrnVoucherLineItems[];
+    total: number;
+    subtotal: number;
+    created_by_user_id?: number;
 }
 
