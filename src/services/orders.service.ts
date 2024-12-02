@@ -202,6 +202,7 @@ class OrdersService {
 
             //--Rollback the transaction on error
             await connection.rollback();
+            
             throw error;
         } finally {
             if (connection) {

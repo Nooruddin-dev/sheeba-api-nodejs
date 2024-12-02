@@ -1,9 +1,9 @@
 import { Pool } from 'mysql2/promise';
-import { withConnectionDatabase } from '../configurations/db';
+import { connectionPool, withConnectionDatabase } from '../configurations/db';
 import { stringIsNullOrWhiteSpace } from '../utils/commonHelpers/ValidationHelper';
 import { ServiceResponseInterface } from '../models/common/ServiceResponseInterface';
 import { IJobCardRequestForm } from '../models/jobCardManagement/IJobCardRequestForm';
-import { dynamicDataGetByAnyColumnService, dynamicDataGetService, dynamicDataInsertService, dynamicDataUpdateService } from './dynamic.service';
+import { dynamicDataGetByAnyColumnService, dynamicDataGetService, dynamicDataGetServiceWithConnection, dynamicDataInsertService, dynamicDataInsertServiceNew, dynamicDataUpdateService, dynamicDataUpdateServiceWithConnection } from './dynamic.service';
 import { JobCardStatusEnum } from '../models/jobCardManagement/IJobCardStatus';
 import { IJobProductionEntryForm } from '../models/jobCardManagement/IJobProductionEntryForm';
 import { ProductionEntriesTypesEnum } from '../models/enum/GlobalEnums';
@@ -63,8 +63,11 @@ class JobCardService {
             primaryKeyValue: null
         };
 
-        try {
+        const connection = await connectionPool.getConnection();
 
+        try {
+            // Begin the transaction
+            await connection.beginTransaction();
 
             //--update case
             if (formData?.job_card_id && formData?.job_card_id > 0) {
@@ -100,7 +103,7 @@ class JobCardService {
                     updated_by: formData.createByUserId,
                 };
 
-                responseJobCardInsert = await dynamicDataUpdateService(tableName, primaryKeyName, primaryKeyValue, columnsJobCardFormUpdate);
+                responseJobCardInsert = await dynamicDataUpdateServiceWithConnection(tableName, primaryKeyName, primaryKeyValue, columnsJobCardFormUpdate, connection);
 
 
                 //-- insert/update into job card products
@@ -109,7 +112,7 @@ class JobCardService {
                     for (const element of formData.jobCardAllProducts) {
 
                         //--get job_card_products by id
-                        const job_product_data = await dynamicDataGetService('job_card_products', 'job_card_product_id', element.job_card_product_id);
+                        const job_product_data = await dynamicDataGetServiceWithConnection('job_card_products', 'job_card_product_id', element.job_card_product_id, connection);
                         if (job_product_data?.data && job_product_data?.data != null) {
                             const jobCardProductRow = job_product_data?.data;
 
@@ -118,7 +121,7 @@ class JobCardService {
                                 product_code: element.product_code,
                             }
 
-                            const responseProductInfo = await dynamicDataUpdateService('job_card_products', 'job_card_product_id', jobCardProductRow.job_card_product_id, columnsJobCardProductsUpdate);
+                            const responseProductInfo = await dynamicDataUpdateServiceWithConnection('job_card_products', 'job_card_product_id', jobCardProductRow.job_card_product_id, columnsJobCardProductsUpdate, connection);
 
                         } else {
                             const columnsJobCardProducts: any = {
@@ -127,8 +130,8 @@ class JobCardService {
                                 product_code: element.product_code,
 
                             }
-                            var responseOrderItem = await dynamicDataInsertService('job_card_products', 'job_card_product_id',
-                                null, true, columnsJobCardProducts);
+                            var responseOrderItem = await dynamicDataInsertServiceNew('job_card_products', 'job_card_product_id',
+                                null, true, columnsJobCardProducts, connection);
 
                         }
 
@@ -143,7 +146,7 @@ class JobCardService {
                     for (const element of formData.job_card_dispatch_info) {
 
                         //--get job_card_products by id
-                        const job_dispatch_data = await dynamicDataGetService('job_card_dispatch_info', 'dispatch_info_id', element.dispatch_info_id);
+                        const job_dispatch_data = await dynamicDataGetServiceWithConnection('job_card_dispatch_info', 'dispatch_info_id', element.dispatch_info_id, connection);
                         if (job_dispatch_data?.data && job_dispatch_data?.data != null) {
                             const jobDispatchRow = job_dispatch_data?.data;
 
@@ -152,7 +155,7 @@ class JobCardService {
                                 dispatch_weight_quantity: element.dispatch_weight_quantity,
                             }
 
-                            const responseDispatchInfo = await dynamicDataUpdateService('job_card_dispatch_info', 'dispatch_info_id', jobDispatchRow.dispatch_info_id, columnsJobCardDispatchInfoUpdate);
+                            const responseDispatchInfo = await dynamicDataUpdateServiceWithConnection('job_card_dispatch_info', 'dispatch_info_id', jobDispatchRow.dispatch_info_id, columnsJobCardDispatchInfoUpdate, connection);
 
                         } else {
                             const columnsJobCardDispatchInfoInsert: any = {
@@ -161,8 +164,8 @@ class JobCardService {
                                 dispatch_weight_quantity: element.dispatch_weight_quantity,
 
                             }
-                            const responseDispatchInfo = await dynamicDataInsertService('job_card_dispatch_info', 'job_card_dispatch_info_idproduct_id',
-                                null, true, columnsJobCardDispatchInfoInsert);
+                            const responseDispatchInfo = await dynamicDataInsertServiceNew('job_card_dispatch_info', 'job_card_dispatch_info_idproduct_id',
+                                null, true, columnsJobCardDispatchInfoInsert, connection);
 
                         }
 
@@ -221,8 +224,8 @@ class JobCardService {
 
 
 
-                responseJobCardInsert = await dynamicDataInsertService(jobCardMasterTableMainData.tableName, jobCardMasterTableMainData.primaryKeyName, jobCardMasterTableMainData.primaryKeyValue,
-                    jobCardMasterTableMainData.isAutoIncremented, columnsJobCardForm);
+                responseJobCardInsert = await dynamicDataInsertServiceNew(jobCardMasterTableMainData.tableName, jobCardMasterTableMainData.primaryKeyName, jobCardMasterTableMainData.primaryKeyValue,
+                    jobCardMasterTableMainData.isAutoIncremented, columnsJobCardForm, connection);
                 if (responseJobCardInsert && responseJobCardInsert.success == true && responseJobCardInsert.primaryKeyValue) {
 
                     const job_card_id = responseJobCardInsert.primaryKeyValue;
@@ -247,8 +250,8 @@ class JobCardService {
                                 product_code: element.product_code,
 
                             }
-                            var responseOrderItem = await dynamicDataInsertService(jobCardProductsTableData.tableName, jobCardProductsTableData.primaryKeyName,
-                                jobCardProductsTableData.primaryKeyValue, jobCardProductsTableData.isAutoIncremented, columnsJobCardProducts);
+                            var responseOrderItem = await dynamicDataInsertServiceNew(jobCardProductsTableData.tableName, jobCardProductsTableData.primaryKeyName,
+                                jobCardProductsTableData.primaryKeyValue, jobCardProductsTableData.isAutoIncremented, columnsJobCardProducts, connection);
 
                         }
 
@@ -265,8 +268,8 @@ class JobCardService {
                                 dispatch_weight_quantity: element.dispatch_weight_quantity,
                                 unique_key: element.unique_key,
                             }
-                            var responseJobCardDispatchInfo = await dynamicDataInsertService('job_card_dispatch_info', 'dispatch_info_id',
-                                null, true, columnsJobCardDispatchInfo);
+                            var responseJobCardDispatchInfo = await dynamicDataInsertServiceNew('job_card_dispatch_info', 'dispatch_info_id',
+                                null, true, columnsJobCardDispatchInfo, connection);
 
                         }
 
@@ -285,16 +288,32 @@ class JobCardService {
                         // updated_by: formData.createByUserId,
 
                     };
-                    var responseOrderMain = await dynamicDataUpdateService('job_cards_master', 'job_card_id', job_card_id, columnsJobCardUpdate);
+                    var responseOrderMain = await dynamicDataUpdateServiceWithConnection('job_cards_master', 'job_card_id', job_card_id, columnsJobCardUpdate, connection);
 
 
                 }
             }
 
+            //--Commit the transaction if all inserts/updates are successful
+            await connection.commit();
+
 
         } catch (error) {
             console.error('Error executing insert/update job card details:', error);
+
+            //--Rollback the transaction on error
+            await connection.rollback();
+
             throw error;
+        } finally {
+            if (connection) {
+                if (typeof connection.release === 'function') {
+                    await connection.release();
+                } else if (typeof connection.end === 'function') {
+                    await connection.end();
+                }
+
+            }
         }
 
         return responseJobCardInsert;
@@ -422,9 +441,12 @@ class JobCardService {
             primaryKeyValue: null
         };
 
+        const connection = await connectionPool.getConnection();
+
         try {
 
-
+            // Begin the transaction
+            await connection.beginTransaction();
 
 
             const tableName = 'job_production_entries';
@@ -438,7 +460,7 @@ class JobCardService {
             if (formData.production_entry_id != undefined && formData.production_entry_id != null && formData.production_entry_id > 0) {
 
                 //-- get production entry detail by id before update
-                const jobProductionEntryDetailBeforeUpdate = await dynamicDataGetService('job_production_entries', 'production_entry_id', formData.production_entry_id);
+                const jobProductionEntryDetailBeforeUpdate = await dynamicDataGetServiceWithConnection('job_production_entries', 'production_entry_id', formData.production_entry_id, connection);
                 const oldNetValue = parseFloat(jobProductionEntryDetailBeforeUpdate?.data?.net_value ?? '0') ?? 0;
                 const oldWeightValue = parseFloat(jobProductionEntryDetailBeforeUpdate?.data?.weight_value ?? '0') ?? 0;
 
@@ -465,7 +487,7 @@ class JobCardService {
 
 
 
-                response = await dynamicDataUpdateService(tableName, primaryKeyName, primaryKeyValue, columns);
+                response = await dynamicDataUpdateServiceWithConnection(tableName, primaryKeyName, primaryKeyValue, columns, connection);
 
                 if (response?.success == true) {
 
@@ -496,7 +518,7 @@ class JobCardService {
                             created_at: new Date(),
                         };
 
-                        const responseLedger = await dynamicDataInsertService('inventory_ledger', 'ledger_id', null, true, columnsLedger);
+                        const responseLedger = await dynamicDataInsertServiceNew('inventory_ledger', 'ledger_id', null, true, columnsLedger, connection);
                         if (responseLedger?.success == true) {
 
                             //-- update product stock quantity
@@ -510,7 +532,7 @@ class JobCardService {
                                 updated_by: formData.createByUserId,
 
                             };
-                            var responseOrderMain = await dynamicDataUpdateService('products', 'productid', formData.job_card_product_id, columnsProducts);
+                            var responseOrderMain = await dynamicDataUpdateServiceWithConnection('products', 'productid', formData.job_card_product_id, columnsProducts, connection);
                         }
 
                     }
@@ -522,7 +544,7 @@ class JobCardService {
                             updated_on: new Date(),
                             updated_by: formData.createByUserId,
                         };
-                        var responseJobCardMaster = await dynamicDataUpdateService('job_cards_master', "job_card_id", formData?.job_card_id?.toString() ?? "0", columnsJobCardMaster);
+                        var responseJobCardMaster = await dynamicDataUpdateServiceWithConnection('job_cards_master', "job_card_id", formData?.job_card_id?.toString() ?? "0", columnsJobCardMaster, connection);
 
                     }
 
@@ -557,7 +579,7 @@ class JobCardService {
                 };
 
 
-                response = await dynamicDataInsertService(tableName, primaryKeyName, null, true, columns);
+                response = await dynamicDataInsertServiceNew(tableName, primaryKeyName, null, true, columns, connection);
                 if (response?.success == true) {
 
                     if (formData.job_card_product_id) {
@@ -576,7 +598,7 @@ class JobCardService {
                             created_at: new Date(),
                         };
 
-                        const responseLedger = await dynamicDataInsertService('inventory_ledger', 'ledger_id', null, true, columnsLedger);
+                        const responseLedger = await dynamicDataInsertServiceNew('inventory_ledger', 'ledger_id', null, true, columnsLedger, connection);
                         if (responseLedger?.success == true) {
 
                             //-- update product stock quantity
@@ -589,7 +611,7 @@ class JobCardService {
                                 updated_by: formData.createByUserId,
 
                             };
-                            var responseOrderMain = await dynamicDataUpdateService('products', 'productid', formData.job_card_product_id, columnsProducts);
+                            var responseOrderMain = await dynamicDataUpdateServiceWithConnection('products', 'productid', formData.job_card_product_id, columnsProducts, connection);
                         }
 
                     }
@@ -601,7 +623,7 @@ class JobCardService {
                             updated_on: new Date(),
                             updated_by: formData.createByUserId,
                         };
-                        var responseJobCardMaster = await dynamicDataUpdateService('job_cards_master', "job_card_id", formData?.job_card_id?.toString() ?? "0", columnsJobCardMaster);
+                        var responseJobCardMaster = await dynamicDataUpdateServiceWithConnection('job_cards_master', "job_card_id", formData?.job_card_id?.toString() ?? "0", columnsJobCardMaster, connection);
 
                     }
 
@@ -614,9 +636,28 @@ class JobCardService {
             }
 
 
+            //--Commit the transaction if all inserts/updates are successful
+            await connection.commit();
+
+
         } catch (error) {
             console.error('Error executing insert/update proudct details:', error);
+
+            //--Rollback the transaction on error
+            await connection.rollback();
+
+
+
             throw error;
+        } finally {
+            if (connection) {
+                if (typeof connection.release === 'function') {
+                    await connection.release();
+                } else if (typeof connection.end === 'function') {
+                    await connection.end();
+                }
+
+            }
         }
 
         return response;
@@ -697,9 +738,12 @@ class JobCardService {
             primaryKeyValue: null
         };
 
+        const connection = await connectionPool.getConnection();
+
         try {
 
-
+            // Begin the transaction
+            await connection.beginTransaction();
 
 
             const tableName = 'job_card_dispatch_data';
@@ -720,14 +764,14 @@ class JobCardService {
             };
 
 
-            response = await dynamicDataInsertService(tableName, primaryKeyName, null, true, columns);
+            response = await dynamicDataInsertServiceNew(tableName, primaryKeyName, null, true, columns, connection);
             if (response?.success == true) {
                 const card_dispatch_info_id: any = response?.primaryKeyValue;
                 const card_dispatch_no = 'DN' + response?.primaryKeyValue?.toString().padStart(7, '0');
                 const columnsDispatchUpdate: any = {
                     card_dispatch_no: card_dispatch_no,
                 };
-                var responseCardDispatch = await dynamicDataUpdateService('job_card_dispatch_data', 'card_dispatch_info_id', card_dispatch_info_id, columnsDispatchUpdate);
+                var responseCardDispatch = await dynamicDataUpdateServiceWithConnection('job_card_dispatch_data', 'card_dispatch_info_id', card_dispatch_info_id, columnsDispatchUpdate, connection);
 
 
                 if (formData.deliveryChallanLineItems && formData.deliveryChallanLineItems.length > 0) {
@@ -749,8 +793,8 @@ class JobCardService {
 
 
                         }
-                        var responseOrderItem = await dynamicDataInsertService("delivery_challan_items", "challan_item_id",
-                            null, true, columnsChallanItem);
+                        var responseOrderItem = await dynamicDataInsertServiceNew("delivery_challan_items", "challan_item_id",
+                            null, true, columnsChallanItem, connection);
 
 
                     }
@@ -759,11 +803,26 @@ class JobCardService {
 
             }
 
+            //--Commit the transaction if all inserts/updates are successful
+            await connection.commit();
 
 
         } catch (error) {
             console.error('Error executing insert/update proudct details:', error);
+
+            //--Rollback the transaction on error
+            await connection.rollback();
+
             throw error;
+        } finally {
+            if (connection) {
+                if (typeof connection.release === 'function') {
+                    await connection.release();
+                } else if (typeof connection.end === 'function') {
+                    await connection.end();
+                }
+
+            }
         }
 
         return response;
@@ -922,7 +981,7 @@ class JobCardService {
     public async getAllProductsForProductionEntryService(FormData: any): Promise<any> {
 
         return withConnectionDatabase(async (connection: any) => {
-          
+
 
 
             const [results]: any = await connection.query(`

@@ -4,7 +4,7 @@ import { connectionPool, withConnectionDatabase } from '../configurations/db';
 import { stringIsNullOrWhiteSpace } from '../utils/commonHelpers/ValidationHelper';
 import { IGrnVoucherCreateRequestForm } from '../models/voucher/IGrnVoucherCreateRequestForm';
 import { ServiceResponseInterface } from '../models/common/ServiceResponseInterface';
-import { dynamicDataGetByAnyColumnService, dynamicDataGetService, dynamicDataInsertService, dynamicDataUpdateService } from './dynamic.service';
+import { dynamicDataGetByAnyColumnService, dynamicDataGetService, dynamicDataGetServiceWithConnection, dynamicDataInsertService, dynamicDataInsertServiceNew, dynamicDataUpdateService, dynamicDataUpdateServiceWithConnection } from './dynamic.service';
 import OrdersService from './orders.service';
 import { ProductionEntriesTypesEnum, PurchaseOrderStatusTypesEnum, UnitTypesEnum } from '../models/enum/GlobalEnums';
 import { getProductQuantityFromLedger, getProductWeightValueFromLedger } from './common.service';
@@ -126,7 +126,13 @@ class VoucherServices {
             primaryKeyValue: null
         };
 
+        const connection = await connectionPool.getConnection();
+
         try {
+          
+             // Begin the transaction
+             await connection.beginTransaction();
+
             //--Insert into grn_voucher table
             const columnsGrnVoucher: any = {
                 voucher_number: '', //--formatted auto number like : 'GR000001'
@@ -142,7 +148,7 @@ class VoucherServices {
                 created_by: formData.created_by_user_id,
             };
 
-            responseGrnVoucherInsert = await dynamicDataInsertService("grn_voucher", "voucher_id", null, true, columnsGrnVoucher);
+            responseGrnVoucherInsert = await dynamicDataInsertServiceNew("grn_voucher", "voucher_id", null, true, columnsGrnVoucher, connection);
             if (responseGrnVoucherInsert && responseGrnVoucherInsert.success == true && responseGrnVoucherInsert.primaryKeyValue) {
 
                 const voucher_id = responseGrnVoucherInsert.primaryKeyValue;
@@ -157,7 +163,7 @@ class VoucherServices {
                 if (formData.products && formData.products.length > 0) {
                     for (const element of formData.products) {
                         //--get product details by id
-                        var productDetail = await dynamicDataGetService('products', 'productid', element.product_id);
+                        var productDetail = await dynamicDataGetServiceWithConnection('products', 'productid', element.product_id, connection);
                         if (productDetail && productDetail?.data && productDetail?.data?.productid > 0) {
                             const columnGrnVoucherLineItem: any = {
                                 voucher_id: voucher_id,
@@ -171,8 +177,8 @@ class VoucherServices {
                                 cost_inclusive: element.cost_inclusive,
                                 total: element.total,
                             }
-                            await dynamicDataInsertService(grnVoucherLineItems.tableName, grnVoucherLineItems.primaryKeyName,
-                                grnVoucherLineItems.primaryKeyValue, grnVoucherLineItems.isAutoIncremented, columnGrnVoucherLineItem);
+                            await dynamicDataInsertServiceNew(grnVoucherLineItems.tableName, grnVoucherLineItems.primaryKeyName,
+                                grnVoucherLineItems.primaryKeyValue, grnVoucherLineItems.isAutoIncremented, columnGrnVoucherLineItem, connection);
 
 
                             let reel_quanity = 0;
@@ -191,7 +197,7 @@ class VoucherServices {
                                 action_type: ProductionEntriesTypesEnum.NewGRN,
                                 created_at: new Date(),
                             };
-                            const responseLedger = await dynamicDataInsertService('inventory_ledger', 'ledger_id', null, true, columnsLedger);
+                            const responseLedger = await dynamicDataInsertServiceNew('inventory_ledger', 'ledger_id', null, true, columnsLedger, connection);
                             if (responseLedger?.success == true) {
                                 //-- update product stock quantity
                                 const ledgerStockQuantity = await getProductQuantityFromLedger(element.product_id);
@@ -206,18 +212,18 @@ class VoucherServices {
                                     stockquantity: ledgerStockQuantity.total_quantity,
                                     remaining_quantity: newRemainingQuantity,
                                 };
-                                await dynamicDataUpdateService('products', 'productid', element.product_id, columnsProducts);
+                                await dynamicDataUpdateServiceWithConnection('products', 'productid', element.product_id, columnsProducts, connection);
 
                             }
 
                             //-- get purchase order line item by id
-                            var purchaseOrderLineItemDetail = await dynamicDataGetService('purchase_orders_items', 'line_item_id', element.order_line_item_id);
+                            var purchaseOrderLineItemDetail = await dynamicDataGetServiceWithConnection('purchase_orders_items', 'line_item_id', element.order_line_item_id, connection);
                             if (purchaseOrderLineItemDetail) {
                                 //--update receiving_grn_quantity in purchase_orders_items when ever grn created.
                                 const columnsPurchaseOrderItem: any = {
                                     receiving_grn_quantity: parseFloat(purchaseOrderLineItemDetail?.data?.receiving_grn_quantity || '0') + element.quantity,
                                 };
-                                await dynamicDataUpdateService('purchase_orders_items', 'line_item_id', element.order_line_item_id, columnsPurchaseOrderItem);
+                                await dynamicDataUpdateServiceWithConnection('purchase_orders_items', 'line_item_id', element.order_line_item_id, columnsPurchaseOrderItem, connection);
 
                             }
 
@@ -235,14 +241,31 @@ class VoucherServices {
                     updated_by: formData.created_by_user_id,
 
                 };
-                await dynamicDataUpdateService('grn_voucher', 'voucher_id', voucher_id, columnsOrderUpdate);
+                await dynamicDataUpdateServiceWithConnection('grn_voucher', 'voucher_id', voucher_id, columnsOrderUpdate, connection);
             }
+
+             //--Commit the transaction if all inserts/updates are successful
+             await connection.commit();
 
 
         } catch (error) {
             console.error('error while creating grn:', error);
+
+             //--Rollback the transaction on error
+             await connection.rollback();
+
             throw error;
+        }finally {
+            if (connection) {
+                if (typeof connection.release === 'function') {
+                    await connection.release();
+                } else if (typeof connection.end === 'function') {
+                    await connection.end();
+                }
+
+            }
         }
+
 
         return responseGrnVoucherInsert;
     }
