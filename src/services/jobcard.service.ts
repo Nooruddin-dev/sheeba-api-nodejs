@@ -1000,7 +1000,28 @@ class JobCardService {
 
     }
 
+    public async getDispatchForAutoComplete(value: string): Promise<any> {
+        return withConnectionDatabase(async (connection: any) => {
+            const [results]: any = await connection.query(`
+                SELECT
+                    d.card_dispatch_info_id as dispatchId,
+                    d.card_dispatch_no as dispatchNo,
+                    d.item_name as itemName,
+                    d.grand_total as quantity,
+                    d.company_name as companyName,
+                    jc.job_card_id as jobCardId,
+                    jc.card_rate as rate
+                FROM job_card_dispatch_data d
+                INNER JOIN job_cards_master jc
+                    ON d.job_card_id = jc.job_card_id
+                WHERE d.card_dispatch_no like '%${value}%'
+                LIMIT 10;
+            `);
 
+            const finalData: any = results;
+            return finalData;
+        });
+    }
 
 }
 

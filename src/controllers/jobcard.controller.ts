@@ -151,9 +151,9 @@ class JobCardController {
 
 
         try {
-           // const busnPartnerIdHeader = getBusnPartnerIdFromApiHeader(req);
+            // const busnPartnerIdHeader = getBusnPartnerIdFromApiHeader(req);
 
-         
+
             const result = await this.jobCardService.getJobCardDetailByIdForEditApiService(job_card_id);
 
             if (!result) {
@@ -168,9 +168,9 @@ class JobCardController {
 
 
     }
-    
 
-    
+
+
     public gerProductionEntryListBySearchTermApi = async (req: Request, res: Response): Promise<void> => {
 
 
@@ -224,7 +224,7 @@ class JobCardController {
 
 
             if (stringIsNullOrWhiteSpace(model.job_card_id) || stringIsNullOrWhiteSpace(model.machine_id)
-            || stringIsNullOrWhiteSpace(model.waste_value) || stringIsNullOrWhiteSpace(model.net_value)) {
+                || stringIsNullOrWhiteSpace(model.waste_value) || stringIsNullOrWhiteSpace(model.net_value)) {
                 responseBody.responseMessage = 'Please fill all required fields';
                 res.status(200).json({ Response: responseBody });
                 return;
@@ -262,7 +262,7 @@ class JobCardController {
                 production_entry_id: production_entry_id ? production_entry_id : "",
                 job_card_id: job_card_id ? job_card_id : "",
                 machine_name: machine_name || '',
-             
+
             };
 
             console.log('formData', formData);
@@ -298,17 +298,17 @@ class JobCardController {
 
 
             if (stringIsNullOrWhiteSpace(model.item_name)) {
-                    responseBody.responseMessage = 'Please fill all required fields';
-                    res.status(200).json({ Response: responseBody });
-                    return;
+                responseBody.responseMessage = 'Please fill all required fields';
+                res.status(200).json({ Response: responseBody });
+                return;
             }
-    
+
             if (model.deliveryChallanLineItems?.length === 0) {
                 responseBody.responseMessage = 'Please add at least one item in the line items!';
                 res.status(200).json({ Response: responseBody });
                 return;
             }
-    
+
             const busnPartnerIdHeader = getBusnPartnerIdFromApiHeader(req);
             model.createByUserId = busnPartnerIdHeader;
 
@@ -328,7 +328,7 @@ class JobCardController {
     public getJobDispatchReportDataApi = async (req: Request, res: Response): Promise<void> => {
 
         const { job_card_id, fromDate, toDate, pageNo = 1, pageSize = 2000 } = req.query;
-      
+
         try {
             //const busnPartnerIdHeader = getBusnPartnerIdFromApiHeader(req);
 
@@ -338,7 +338,7 @@ class JobCardController {
                 job_card_id: job_card_id ? job_card_id : "",
                 fromDate: fromDate || '',
                 toDate: toDate || '',
-             
+
             };
 
             console.log('formData', formData);
@@ -372,7 +372,7 @@ class JobCardController {
 
 
         try {
-          //  const busnPartnerIdHeader = getBusnPartnerIdFromApiHeader(req);
+            //  const busnPartnerIdHeader = getBusnPartnerIdFromApiHeader(req);
 
 
             const result = await this.jobCardService.getJobDispatchReportDataByIdService(card_dispatch_info_id);
@@ -394,7 +394,7 @@ class JobCardController {
     public getMachineBaseReportApi = async (req: Request, res: Response): Promise<void> => {
         try {
 
-            const {fromDate, toDate, commaSeparatedMachineIds, machineTypeId, pageNo = 1, pageSize = 2000 } = req.query;
+            const { fromDate, toDate, commaSeparatedMachineIds, machineTypeId, pageNo = 1, pageSize = 2000 } = req.query;
             const formData = {
                 pageNo: pageNo ?? 1,
                 pageSize: pageSize ?? 2000,
@@ -402,7 +402,7 @@ class JobCardController {
                 toDate: toDate || '',
                 commaSeparatedMachineIds: commaSeparatedMachineIds || '',
                 machineTypeId: machineTypeId || 0,
-             
+
             };
 
 
@@ -432,7 +432,7 @@ class JobCardController {
             const formData = {
                 pageNo: pageNo ?? 1,
                 pageSize: 2000,
-            
+
             };
 
             console.log('formData', formData);
@@ -452,7 +452,15 @@ class JobCardController {
 
     }
 
-
+    public getDispatchForAutoComplete = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const { dispatchNo } = req.query;
+            const result = await this.jobCardService.getDispatchForAutoComplete(dispatchNo as string);
+            res.status(200).json(result);
+        } catch (err: any) {
+            res.status(500).json({ message: 'error fetching dispatch numbers', error: err.message });
+        }
+    }
 }
 
 
