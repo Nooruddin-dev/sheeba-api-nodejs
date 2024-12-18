@@ -25,11 +25,11 @@ class SaleInvoiceController {
 
     public getSalesInvoicesByParam = async (req: Request, res: Response): Promise<void> => {
         try {
-            const { page = 1 } = req.query;
+            const { page } = req.query;
             const body = {
                 page: page ?? 1,
                 pageSize: 10,
-                ...req.body
+                ...req.query
             };
             const result = await this.saleInvoiceService.getSaleInvoiceByParam(body);
             res.status(200).json(result);

@@ -87,24 +87,23 @@ class SaleInvoiceService {
     public async getSaleInvoiceByParam(param: any) {
         return withConnectionDatabase(async (connection: any) => {
             let conditions = [];
-            if (param.jobCardNo) {
-                conditions.push(`jc.job_card_no = ${param.jobCardNo}`);
-            }
-
             if (param.saleInvoiceNo) {
-                conditions.push(`si.saleInvoiceNo = ${param.saleInvoiceNo}`);
+                conditions.push(`si.saleInvoiceNo = '${param.saleInvoiceNo}'`);
             }
 
             if (param.dispatchNo) {
-                conditions.push(`si.dispatchNo = ${param.dispatchNo}`);
+                conditions.push(`si.dispatchNo = '${param.dispatchNo}'`);
             }
 
-            if (param.saleInvoiceNo) {
-                conditions.push(`jc.company_name = ${param.companyName}`);
+            if (param.companyName) {
+                conditions.push(`jc.company_name like '%${param.companyName}%'`);
             }
 
-            const [result] = await connection.query(`
+            const offset = (param.page - 1) * 10;
+
+            const dataQuery = `
                     SELECT
+                        si.id,
                         si.date,
                         si.customerName,
                         si.saleInvoiceNo,
@@ -117,12 +116,28 @@ class SaleInvoiceService {
                         ON jc.job_card_id = si.jobCardId
                     INNER JOIN job_card_dispatch_data d
                         ON d.card_dispatch_info_id = si.dispatchId
-                    ${conditions.length ? 'WHERE ' + conditions.join(' AND ') : ''};
-                `);
+                    ${conditions.length ? 'WHERE ' + conditions.join(' AND ') : ''}
+                    LIMIT 10 OFFSET ${offset};`;
+            const countQuery = `
+                    SELECT
+                        count(si.id) as count
+                    FROM sale_invoice si
+                    INNER JOIN job_cards_master jc
+                        ON jc.job_card_id = si.jobCardId
+                    INNER JOIN job_card_dispatch_data d
+                        ON d.card_dispatch_info_id = si.dispatchId
+                    ${conditions.length ? 'WHERE ' + conditions.join(' AND ') : ''};`;
+
+            const [[dataResult], [countResult]] = await Promise.all([
+                connection.query(dataQuery),
+                connection.query(countQuery)
+            ]);
+
+            console.log(dataResult, countResult);
 
             return {
-                total: 100,
-                invoices: result
+                total: countResult[0]?.count || 0,
+                invoices: dataResult
             };
         });
 
@@ -130,13 +145,16 @@ class SaleInvoiceService {
 
     public async getSaleInvoiceById(id: number) {
         return withConnectionDatabase(async (connection: any) => {
-            const [result] = await connection.query(`
+            try {
+                const [invoice] = await connection.query(`
                     SELECT
                         si.*,
                         jc.job_card_id as jobCardId,
-                        jc.job_card_no as jobCardNo
+                        jc.job_card_no as jobCardNo,
+                        jc.company_name as companyName,
                         d.card_dispatch_info_id as dispatchId,
                         d.card_dispatch_no as dispatchNo,
+                        d.item_name as itemName
                     FROM sale_invoice si
                     INNER JOIN job_cards_master jc
                         ON jc.job_card_id = si.jobCardId
@@ -145,7 +163,24 @@ class SaleInvoiceService {
                     WHERE si.id = ?;
                 `, id);
 
-            return result;
+
+                if (invoice.length) {
+                    const [lineItems] = await connection.query(`
+                    SELECT
+                        sii.*
+                    FROM sale_invoice_item sii
+                    WHERE sii.saleInvoiceId = ?;
+                `, id);
+
+                    return {
+                        ...invoice[0],
+                        lineItems
+                    };
+                }
+            } catch (error) {
+                console.log(error);
+                throw error;
+            }
         });
 
     }
