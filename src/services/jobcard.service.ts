@@ -7,7 +7,7 @@ import { dynamicDataGetByAnyColumnService, dynamicDataGetService, dynamicDataGet
 import { JobCardStatusEnum } from '../models/jobCardManagement/IJobCardStatus';
 import { IJobProductionEntryForm } from '../models/jobCardManagement/IJobProductionEntryForm';
 import { ProductionEntriesTypesEnum } from '../models/enum/GlobalEnums';
-import { getProductQuantityFromLedger, getProductWeightValueFromLedger } from './common.service';
+import { getProductQuantityFromLedger, getProductWeightValueFromLedger, getWeightAndQtyFromLedger } from './common.service';
 import { IJobCardDispatchInfoForm } from '../models/jobCardManagement/IJobCardDispatchInfoForm';
 
 
@@ -522,11 +522,10 @@ class JobCardService {
                         if (responseLedger?.success == true) {
 
                             //-- update product stock quantity
-                            const ledgerStockQuantity = await getProductQuantityFromLedger(formData.job_card_product_id);
-                            const ledgerWeightResult = await getProductWeightValueFromLedger(formData.job_card_product_id);
+                            const ledger = await getWeightAndQtyFromLedger(formData.job_card_product_id, connection)
                             const columnsProducts: any = {
-                                stockquantity: ledgerStockQuantity.total_quantity,
-                                weight_value: ledgerWeightResult.total_weight_quantity,
+                                stockquantity: ledger.total_quantity,
+                                weight_value: ledger.total_weight_quantity,
 
                                 updated_on: new Date(),
                                 updated_by: formData.createByUserId,
@@ -602,11 +601,10 @@ class JobCardService {
                         if (responseLedger?.success == true) {
 
                             //-- update product stock quantity
-                            const ledgerStockQuantity = await getProductQuantityFromLedger(formData.job_card_product_id);
-                            const ledgerWeightResult = await getProductWeightValueFromLedger(formData.job_card_product_id);
+                            const ledger = await getWeightAndQtyFromLedger(formData.job_card_product_id, connection)
                             const columnsProducts: any = {
-                                stockquantity: ledgerStockQuantity.total_quantity,
-                                weight_value: ledgerWeightResult.total_weight_quantity,
+                                stockquantity: ledger.total_quantity,
+                                weight_value: ledger.total_weight_quantity,
                                 updated_on: new Date(),
                                 updated_by: formData.createByUserId,
 

@@ -7,7 +7,7 @@ import { ServiceResponseInterface } from '../models/common/ServiceResponseInterf
 import { dynamicDataGetByAnyColumnService, dynamicDataGetService, dynamicDataGetServiceWithConnection, dynamicDataInsertService, dynamicDataInsertServiceNew, dynamicDataUpdateService, dynamicDataUpdateServiceWithConnection } from './dynamic.service';
 import OrdersService from './orders.service';
 import { ProductionEntriesTypesEnum, PurchaseOrderStatusTypesEnum, UnitTypesEnum } from '../models/enum/GlobalEnums';
-import { getProductQuantityFromLedger, getProductWeightValueFromLedger } from './common.service';
+import { getProductQuantityFromLedger, getProductWeightValueFromLedger, getWeightAndQtyFromLedger } from './common.service';
 
 class VoucherServices {
 
@@ -200,16 +200,15 @@ class VoucherServices {
                             const responseLedger = await dynamicDataInsertServiceNew('inventory_ledger', 'ledger_id', null, true, columnsLedger, connection);
                             if (responseLedger?.success == true) {
                                 //-- update product stock quantity
-                                const ledgerStockQuantity = await getProductQuantityFromLedger(element.product_id);
-                                const ledgerWeightResult = await getProductWeightValueFromLedger(element.product_id);
+                                const ledger = await getWeightAndQtyFromLedger(element.product_id, connection);
                                 const newRemainingQuantity = (productDetail?.data.remaining_quantity ?? 0) - element.quantity;
                                 const newRemainingWeight = (productDetail?.data.remaining_weight ?? 0) - element.weight;
                                 const columnsProducts: any = {
                                     remaining_weight: newRemainingWeight,
-                                    weight_value: ledgerWeightResult.total_weight_quantity,
+                                    weight_value: ledger.total_weight_quantity,
                                     updated_on: new Date(),
                                     updated_by: formData.created_by_user_id,
-                                    stockquantity: ledgerStockQuantity.total_quantity,
+                                    stockquantity: ledger.total_quantity,
                                     remaining_quantity: newRemainingQuantity,
                                 };
                                 await dynamicDataUpdateServiceWithConnection('products', 'productid', element.product_id, columnsProducts, connection);

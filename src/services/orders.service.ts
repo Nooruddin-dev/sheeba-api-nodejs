@@ -432,10 +432,10 @@ class OrdersService {
                     created_by: formData.createByUserId,
                 };
                 response = await dynamicDataInsertService("purchase_order_status_mapping", "order_status_mapping_id", null, true, columnsOrderStatusMapping);
+                const purchaseOrderDetail = await dynamicDataGetService("purchase_orders", "purchase_order_id", formData.purchase_order_id);
 
                 //--now send email to vendor on status approval
                 if (formData.status_id == PurchaseOrderStatusTypesEnum.Approve) {
-                    const purchaseOrderDetail = await dynamicDataGetService("purchase_orders", "purchase_order_id", formData.purchase_order_id);
 
                     const promises: any[] = [];
                     const [result, _] = await connection.query('select product_id, weight from purchase_orders_items poi where poi.purchase_order_id = ?', formData.purchase_order_id);
@@ -454,6 +454,21 @@ class OrdersService {
                             <a href="${purchaseOrdersLink}">View Purchase Orders</a>
                         `;
                     sendEmailFunc(vendorDetail?.data?.EmailAddress, subject, html);
+                }
+
+                if (formData.status_id == PurchaseOrderStatusTypesEnum.Cancel) {
+                    const purchaseOrderDetail = await dynamicDataGetService("purchase_orders", "purchase_order_id", formData.purchase_order_id);
+
+                    // Send email
+                    const orderVendorId = purchaseOrderDetail?.data?.vendor_id;
+                    const vendorDetail = await dynamicDataGetService("busnpartner", "BusnPartnerId", orderVendorId);
+                    const purchaseOrdersLink = `${WEBSITE_BASE_URL}/site/vendor/purchase-order-details/${formData.purchase_order_id}`;
+                    const subject = 'Purchase order has been cancelled';
+                    const html = `
+                            <p>The status of your purchase order <b>${purchaseOrderDetail?.data.po_number}</b> has been cancelled.</p><br>
+                            <a href="${purchaseOrdersLink}">View Purchase Orders</a>
+                        `;
+                    sendEmailFunc('admin@sheebasite.com', subject, html);
                 }
 
 

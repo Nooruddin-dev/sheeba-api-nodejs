@@ -7,7 +7,7 @@ import { stringIsNullOrWhiteSpace } from "../utils/commonHelpers/ValidationHelpe
 export async function getProductQuantityFromLedger(productId: number): Promise<any> {
 
     return withConnectionDatabase(async (connection: any) => {
-     
+
         const [results]: any = await connection.query(`
             SELECT SUM(quantity) AS total_quantity
             FROM inventory_ledger MTBL
@@ -28,7 +28,7 @@ export async function getProductQuantityFromLedger(productId: number): Promise<a
 export async function getProductWeightValueFromLedger(productId: number): Promise<any> {
 
     return withConnectionDatabase(async (connection: any) => {
-     
+
         const [results]: any = await connection.query(`
             SELECT SUM(weight_quantity_value) AS total_weight_quantity
             FROM inventory_ledger MTBL
@@ -42,4 +42,23 @@ export async function getProductWeightValueFromLedger(productId: number): Promis
             return null;
         }
     });
+}
+
+
+export async function getWeightAndQtyFromLedger(productId: number, connection: any): Promise<any> {
+    const [results]: any = await connection.query(`
+            select
+                sum(quantity) as total_quantity,
+                sum(weight_quantity_value) as total_weight_quantity
+            from
+                inventory_ledger il
+            where
+                il.productid = ?;`
+        , productId);
+
+    if (results?.length > 0) {
+        return results[0];
+    } else {
+        return null;
+    };
 }
