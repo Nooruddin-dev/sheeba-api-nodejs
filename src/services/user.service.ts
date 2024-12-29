@@ -168,7 +168,7 @@ console.log( 'Password' ,Password);
 
     try {
 
-      const [rows, fields]: any = await connection.execute(`CALL SP_CreateUpdateBusnPartner(${formData.busnPartnerId}, ${formData.busnPartnerTypeId}, '${formData.firstName}', '${formData.lastName}', '${formData.emailAddress}', ${formData.isActive}, ${formData.countryId}, '${formData.addressOne}', '${formData.phoneNo}', '${formData.password}', ${formData.profilePictureId}, ${formData.createByUserId}, ${formData.saleRepresentativeVendorId ?? 0})`
+      const [rows, fields]: any = await connection.execute(`CALL SP_CreateUpdateBusnPartner(${formData.busnPartnerId}, ${formData.busnPartnerTypeId}, '${formData.firstName}', '${formData.lastName}', '${formData.emailAddress}', ${formData.isActive}, ${formData.countryId}, '${formData.addressOne}', '${formData.phoneNo}', '${formData.password}', ${formData.profilePictureId}, ${formData.createByUserId}, ${formData.saleRepresentativeVendorId ?? 0}, '${formData.role_type}')`
 
       );
 

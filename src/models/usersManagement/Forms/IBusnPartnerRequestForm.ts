@@ -4,6 +4,7 @@ export interface IBusnPartnerRequestForm {
     firstName: string;
     lastName: string;
     emailAddress: string;
+    role_type: string;
     isActive: boolean;
     isVerified?: boolean;
     countryId?: number;
