@@ -39,7 +39,6 @@ sshpass -p "$PASSWORD" ssh $SERVER_USER@$SERVER_IP << EOF
   cd $SERVER_PATH
   echo "Extracting zip file..."
   unzip $ZIP_FILE
-  rm $ZIP_FILE
   echo "Installing dependencies..."
   npm install
   echo "Starting server with pm2..."
