@@ -73,7 +73,7 @@ class InventoryController {
             }else if(model.productid && model.productid > 0){
 
                 
-                var productNameData = await dynamicDataGetByAnyColumnService('Products', 'product_name', model.product_name);
+                var productNameData = await dynamicDataGetByAnyColumnService('products', 'product_name', model.product_name);
                 if (productNameData && productNameData?.data && productNameData?.data?.length > 0) {
                     if(productNameData.data?.filter((x: { productid: number | undefined; })=>x.productid != model.productid)?.length > 0){
                         responseBody.responseMessage = 'Product name already exists. Please try with another!';
