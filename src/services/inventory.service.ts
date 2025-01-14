@@ -207,7 +207,7 @@ class InventoryService {
                 SELECT COUNT(*) OVER () as TotalRecords, 
                 MTBL.*
                 FROM products MTBL
-                WHERE MTBL.productid IS NOT NULL
+                WHERE MTBL.productid IS NOT NULL AND MTBL.is_active = 1
                 ${searchParameters}
                 ORDER BY MTBL.productid DESC
                 LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}

@@ -41,7 +41,7 @@ class JobCardService {
                 SELECT COUNT(*) OVER () as TotalRecords, 
                 MTBL.*
                 FROM products MTBL
-                WHERE MTBL.productid IS NOT NULL
+                WHERE MTBL.productid IS NOT NULL AND MTBL.is_active = 1
                 ${searchParameters}
                 ORDER BY MTBL.productid DESC
                 LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
@@ -930,8 +930,7 @@ class JobCardService {
                 MTBL.gross_value, MTBL.tare_core, MTBL.created_on AS prod_entry_date, PRD.product_name as item_name, JCM.job_card_no, MCT.machine_type_name,
                 JCM.job_size , MSN.machine_name
                 FROM job_production_entries MTBL
-                LEFT JOIN job_card_products JCP ON JCP.job_card_id = MTBL.job_card_id
-                LEFT JOIN products PRD ON PRD.productid = JCP.product_id
+                LEFT JOIN products PRD ON PRD.productid = MTBL.job_card_product_id
                 INNER JOIN job_cards_master JCM on JCM.job_card_id = MTBL.job_card_id
                 LEFT JOIN machines MSN ON MTBL.machine_id = MSN.machine_id
 
@@ -986,6 +985,7 @@ class JobCardService {
                 SELECT
                 MTBL.*
                 FROM products MTBL
+                WHERE MTBL.is_active = 1
                 ORDER BY MTBL.productid DESC
                 LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
             `);
