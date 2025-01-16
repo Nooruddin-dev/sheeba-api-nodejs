@@ -37,6 +37,7 @@ class JobCardService {
 
 
 
+            const offset = (FormData.pageNo - 1) * FormData.pageSize;
             const [results]: any = await connection.query(`
                 SELECT COUNT(*) OVER () as TotalRecords, 
                 MTBL.*
@@ -44,7 +45,7 @@ class JobCardService {
                 WHERE MTBL.productid IS NOT NULL AND MTBL.is_active = 1
                 ${searchParameters}
                 ORDER BY MTBL.productid DESC
-                LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
+                LIMIT ${FormData.pageSize} OFFSET ${offset}
             `);
 
             const finalData: any = results;
@@ -339,6 +340,7 @@ class JobCardService {
 
 
 
+            const offset = (FormData.pageNo - 1) * FormData.pageSize;
             const [results]: any = await connection.query(`
                 SELECT COUNT(*) OVER () as TotalRecords, 
                 MTBL.*
@@ -346,7 +348,7 @@ class JobCardService {
                 WHERE MTBL.job_card_id IS NOT NULL
                 ${searchParameters}
                 ORDER BY MTBL.job_card_id DESC
-                LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
+                LIMIT ${FormData.pageSize} OFFSET ${offset}
             `);
 
             const finalData: any = results;
@@ -416,6 +418,7 @@ class JobCardService {
 
 
 
+            const offset = (FormData.pageNo - 1) * FormData.pageSize;
             const [results]: any = await connection.query(`
                 SELECT
                 MTBL.*
@@ -423,7 +426,7 @@ class JobCardService {
                 WHERE MTBL.job_card_id IS NOT NULL
                 ${searchParameters}
                 ORDER BY MTBL.job_card_id DESC
-                LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
+                LIMIT ${FormData.pageSize} OFFSET ${offset}
             `);
 
             const finalData: any = results;
@@ -680,6 +683,7 @@ class JobCardService {
 
 
 
+            const offset = (FormData.pageNo - 1) * FormData.pageSize;
             const [results]: any = await connection.query(`
                 SELECT COUNT(*) OVER () as TotalRecords, 
                 mtbl.*, prdc.product_name, prdc.sku, mtc.machine_name, JMSTR.job_card_no, JMSTR.company_name, JMSTR.product_name, JMSTR.weight_qty
@@ -691,7 +695,7 @@ class JobCardService {
                 WHERE mtbl.production_entry_id IS NOT NULL
                 ${searchParameters}
                 ORDER BY mtbl.production_entry_id DESC
-                LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
+                LIMIT ${FormData.pageSize} OFFSET ${offset}
             `);
 
             const finalData: any = results;
@@ -981,13 +985,14 @@ class JobCardService {
 
 
 
+            const offset = (FormData.pageNo - 1) * FormData.pageSize;
             const [results]: any = await connection.query(`
                 SELECT
                 MTBL.*
                 FROM products MTBL
                 WHERE MTBL.is_active = 1
                 ORDER BY MTBL.productid DESC
-                LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
+                LIMIT ${FormData.pageSize} OFFSET ${offset}
             `);
 
             const finalData: any = results;

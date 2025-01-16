@@ -63,7 +63,7 @@ class InventoryService {
 
                     remaining_quantity: 0,
                     remaining_weight: 0,
-                    
+
                     is_active: formData.is_active == true || formData?.is_active?.toString() == 'true' || formData?.is_active?.toString() == '1' ? 1 : 0,
                     price: formData.price,
                     unit_type: formData.unit_type,
@@ -149,8 +149,9 @@ class InventoryService {
                 searchParameters += ` AND MTBL.product_name LIKE '%${FormData.product_name}%' `;
             }
 
+            
 
-
+            const offset = (FormData.pageNo - 1) * FormData.pageSize;
             const [results]: any = await connection.query(`
                 SELECT COUNT(*) OVER () as TotalRecords, 
                 MTBL.*, u.*
@@ -160,7 +161,7 @@ class InventoryService {
                 WHERE MTBL.productid IS NOT NULL
                 ${searchParameters}
                 ORDER BY MTBL.productid DESC
-                LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
+                LIMIT ${FormData.pageSize} OFFSET ${offset}
             `);
 
             if (results && results.length > 0) {
@@ -203,6 +204,7 @@ class InventoryService {
 
 
 
+            const offset = (FormData.pageNo - 1) * FormData.pageSize;
             const [results]: any = await connection.query(`
                 SELECT COUNT(*) OVER () as TotalRecords, 
                 MTBL.*
@@ -210,7 +212,7 @@ class InventoryService {
                 WHERE MTBL.productid IS NOT NULL AND MTBL.is_active = 1
                 ${searchParameters}
                 ORDER BY MTBL.productid DESC
-                LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
+                LIMIT ${FormData.pageSize} OFFSET ${offset}
             `);
 
             const finalData: any = results;
@@ -286,6 +288,7 @@ class InventoryService {
                 searchParameters += ` AND mtbl.tax_rule_type LIKE '%${FormData.tax_rule_type}%' `;
             }
 
+            const offset = (FormData.pageNo - 1) * FormData.pageSize;
             const [results]: any = await connection.query(`
                 SELECT COUNT(*) OVER () as totalRecords, mtbl.*, tc.category_name
                 FROM tax_rules mtbl
@@ -293,7 +296,7 @@ class InventoryService {
                 WHERE mtbl.tax_rule_id IS NOT NULL
                 ${searchParameters}
                 ORDER BY mtbl.tax_rule_id DESC
-                LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
+                LIMIT ${FormData.pageSize} OFFSET ${offset}
             `);
 
             const userData: any = results;
@@ -308,12 +311,14 @@ class InventoryService {
     public async getUnitsListService(FormData: any): Promise<any> {
 
         return withConnectionDatabase(async (connection: any) => {
+
+            const offset = (FormData.pageNo - 1) * FormData.pageSize;
             const [results]: any = await connection.query(`
                 SELECT COUNT(*) OVER () as totalRecords, mtbl.*
                 FROM units mtbl
                 WHERE mtbl.unit_id IS NOT NULL
                 ORDER BY mtbl.unit_id ASC
-                LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
+                LIMIT ${FormData.pageSize} OFFSET ${offset}
             `);
 
             const userData: any = results;

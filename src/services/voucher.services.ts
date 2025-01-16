@@ -71,6 +71,8 @@ class VoucherServices {
 
 
 
+
+            const offset = (FormData.pageNo - 1) * FormData.pageSize;
             const [results]: any = await connection.query(`
                 SELECT COUNT(*) OVER () as TotalRecords, 
                 MTBL.*
@@ -83,7 +85,7 @@ class VoucherServices {
                 WHERE ExcludeOrders.status_id = 4 
                 ${searchParameters}
                 ORDER BY MTBL.purchase_order_id DESC
-                LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
+                LIMIT ${FormData.pageSize} OFFSET ${offset}
             `);
 
             const finalData: any = results;
@@ -288,13 +290,15 @@ class VoucherServices {
                 searchParameters += ` AND MTBL.receiver_name LIKE '%${FormData.receiver_name}%' `;
             }
 
+
+            const offset = (FormData.pageNo - 1) * FormData.pageSize;
             const [results]: any = await connection.query(`
                 SELECT COUNT(*) OVER () as TotalRecords, MTBL.*
                 FROM grn_voucher MTBL
                 WHERE MTBL.voucher_id IS NOT NULL
                 ${searchParameters}
                 ORDER BY MTBL.voucher_id DESC
-                LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
+                LIMIT ${FormData.pageSize} OFFSET ${offset}
             `);
 
             const finalData: any = results;

@@ -18,12 +18,13 @@ class MachinesService {
 
         return withConnectionDatabase(async (connection: any) => {
 
+            const offset = (FormData.pageNo - 1) * FormData.pageSize;
             const [rows]: any = await connection.query(`
                 SELECT COUNT(*) OVER () as TotalRecords, 
                 MTBL.*
                 FROM machine_types MTBL
                 ORDER BY MTBL.machine_type_id ASC
-                LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
+                LIMIT ${FormData.pageSize} OFFSET ${offset}
             `);
 
             const results: any = rows;
@@ -122,6 +123,7 @@ class MachinesService {
 
 
 
+            const offset = (FormData.pageNo - 1) * FormData.pageSize;
             const [results]: any = await connection.query(`
                 SELECT COUNT(*) OVER () as TotalRecords, 
                 MTBL.*, MTYPE.machine_type_name
@@ -130,7 +132,7 @@ class MachinesService {
                 WHERE MTBL.machine_id IS NOT NULL
                 ${searchParameters}
                 ORDER BY MTBL.machine_id DESC
-                LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
+                LIMIT ${FormData.pageSize} OFFSET ${offset}
             `);
 
             const userData: any = results;

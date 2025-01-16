@@ -240,6 +240,7 @@ class OrdersService {
 
 
 
+            const offset = (FormData.pageNo - 1) * FormData.pageSize;
             const [results]: any = await connection.query(`
                 SELECT COUNT(*) OVER () as TotalRecords, 
                 MTBL.*,  
@@ -253,7 +254,7 @@ class OrdersService {
                 WHERE MTBL.purchase_order_id IS NOT NULL
                 ${searchParameters}
                 ORDER BY MTBL.purchase_order_id DESC
-                LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
+                LIMIT ${FormData.pageSize} OFFSET ${offset}
             `);
 
             const finalData: any = results;

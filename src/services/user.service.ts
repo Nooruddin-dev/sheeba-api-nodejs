@@ -79,6 +79,8 @@ console.log( 'Password' ,Password);
         searchParameters += ` AND MTBL.EmailAddress LIKE '%${FormData.emailAddress}%' `;
       }
 
+
+      const offset = (FormData.pageNo - 1) * FormData.pageSize;
       const [results]: any = await connection.query(`
             SELECT COUNT(*) OVER () as TotalRecords, 
             MTBL.*, 
@@ -90,7 +92,7 @@ console.log( 'Password' ,Password);
             WHERE MTBL.BusnPartnerId IS NOT NULL
             ${searchParameters}
             ORDER BY MTBL.BusnPartnerId DESC
-            LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
+            LIMIT ${FormData.pageSize} OFFSET ${offset}
         `);
 
       const userData: any = results;
@@ -194,13 +196,15 @@ console.log( 'Password' ,Password);
   public async getBusinessPartnerTypesService(FormData: any): Promise<any> {
 
     return withConnectionDatabase(async (connection: any) => {
+
+      const offset = (FormData.pageNo - 1) * FormData.pageSize;
       const [rows]: any = await connection.query(`
         SELECT COUNT(*) OVER () as TotalRecords, 
         MTBL.*
         FROM busnpartnertype MTBL
         WHERE MTBL.BusnPartnerTypeId IS NOT NULL
         ORDER BY MTBL.BusnPartnerTypeId DESC
-        LIMIT ${FormData.pageNo - 1}, ${FormData.pageSize}
+        LIMIT ${FormData.pageSize} OFFSET ${offset}
     `);
 
       const results: any = rows;
