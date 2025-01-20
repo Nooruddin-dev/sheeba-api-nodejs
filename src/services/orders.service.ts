@@ -9,7 +9,7 @@ import { calculateItemAmount } from '../utils/commonHelpers/OrderHelper';
 import { PurchaseOrderStatusTypesEnum } from '../models/enum/GlobalEnums';
 import { IPurchaseOrderStatusUpdateRequestForm } from '../models/orders/IPurchaseOrderStatusUpdateRequestForm';
 import { sendEmailFunc } from './EmailService';
-import { SUPER_ADMIN_EMAIL, WEBSITE_BASE_URL } from '../configurations/config';
+import { ROOT_EMAIL, WEB_APP_URL } from '../configurations/config';
 import { v4 as uuidv4 } from 'uuid';
 
 
@@ -184,14 +184,14 @@ class OrdersService {
 
 
                 //Send email
-                const purchaseOrdersLink = `${WEBSITE_BASE_URL}/site/purchase-orders-list`
+                const purchaseOrdersLink = `${WEB_APP_URL}/site/purchase-orders-list`
                 const subject = 'New Purchase Order Created';
                 const html = `
                         <b>A new purchase order has been created.</b><br>
                         <p>Order ID: ${poNumber}</p>
                         <a href="${purchaseOrdersLink}">View Purchase Orders</a>
                     `;
-                sendEmailFunc(SUPER_ADMIN_EMAIL, subject, html);
+                sendEmailFunc(ROOT_EMAIL, subject, html);
             }
 
             //--Commit the transaction if all inserts/updates are successful
@@ -202,7 +202,7 @@ class OrdersService {
 
             //--Rollback the transaction on error
             await connection.rollback();
-            
+
             throw error;
         } finally {
             if (connection) {
@@ -448,11 +448,11 @@ class OrdersService {
                     // Send email
                     const orderVendorId = purchaseOrderDetail?.data?.vendor_id;
                     const vendorDetail = await dynamicDataGetService("busnpartner", "BusnPartnerId", orderVendorId);
-                    const purchaseOrdersLink = `${WEBSITE_BASE_URL}/site/vendor/purchase-order-details/${formData.purchase_order_id}`;
+                    const purchaseOrdersLink = `${WEB_APP_URL}/site/vendor/purchase-order-details/${formData.purchase_order_id}`;
                     const subject = 'Purchase order has been approved';
                     const html = `
                             <p>The status of your purchase order <b>${purchaseOrderDetail?.data.po_number}</b> has been approved.</p><br>
-                            <a href="${purchaseOrdersLink}">View Purchase Orders</a>
+                            <a href="${purchaseOrdersLink}">View Purchase Order</a>
                         `;
                     sendEmailFunc(vendorDetail?.data?.EmailAddress, subject, html);
                 }
@@ -463,11 +463,11 @@ class OrdersService {
                     // Send email
                     const orderVendorId = purchaseOrderDetail?.data?.vendor_id;
                     const vendorDetail = await dynamicDataGetService("busnpartner", "BusnPartnerId", orderVendorId);
-                    const purchaseOrdersLink = `${WEBSITE_BASE_URL}/site/vendor/purchase-order-details/${formData.purchase_order_id}`;
+                    const purchaseOrdersLink = `${WEB_APP_URL}/site/vendor/purchase-order-details/${formData.purchase_order_id}`;
                     const subject = 'Purchase order has been cancelled';
                     const html = `
                             <p>The status of your purchase order <b>${purchaseOrderDetail?.data.po_number}</b> has been cancelled.</p><br>
-                            <a href="${purchaseOrdersLink}">View Purchase Orders</a>
+                            <a href="${purchaseOrdersLink}">View Purchase Order</a>
                         `;
                     sendEmailFunc('admin@sheebasite.com', subject, html);
                 }
