@@ -759,7 +759,8 @@ class JobCardService {
                 item_name: formData.item_name,
                 show_company_detail: formData.show_company_detail,
                 grand_total: grand_total,
-
+                po_number: formData.po_number,
+                tr_number: formData.tr_number,
                 created_on: new Date(),
                 created_by: formData.createByUserId,
 

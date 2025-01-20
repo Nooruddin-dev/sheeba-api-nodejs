@@ -23,9 +23,10 @@ echo "Starting deployment..."
 sshpass -p "$PASSWORD" ssh -t $SERVER_USER@$SERVER_IP << EOF
   echo "Connected to server..."
   cd $SERVER_PATH
+  echo "Current npm version: $(npm -v)"
+  echo "Current node version: $(node -v)"
   echo "Stopping server with pm2..."
   pm2 stop dist/server.js || echo "Server not running, continuing..."
-
   echo "Deleting files except .env..."
   find . -mindepth 1 ! -name '.env' -delete
 EOF
@@ -35,8 +36,10 @@ echo "Copying zip file to server..."
 sshpass -p "$PASSWORD" scp $ZIP_FILE $SERVER_USER@$SERVER_IP:$SERVER_PATH
 
 # Step 3: SSH to extract, install dependencies, and restart the server
-sshpass -p "$PASSWORD" ssh $SERVER_USER@$SERVER_IP << EOF
+sshpass -p "$PASSWORD" ssh -t $SERVER_USER@$SERVER_IP << EOF
   cd $SERVER_PATH
+  echo "Current npm version: $(npm -v)"
+  echo "Current node version: $(node -v)"
   echo "Extracting zip file..."
   unzip $ZIP_FILE
   echo "Installing dependencies..."
