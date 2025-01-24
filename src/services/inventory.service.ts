@@ -1,4 +1,4 @@
-import { Pool } from 'mysql2/promise';
+import { PoolConnection } from 'mysql2/promise';
 import { connectionPool, withConnectionDatabase } from '../configurations/db';
 import { IProductRequestForm } from '../models/inventory/IProductRequestForm';
 import { ServiceResponseInterface } from '../models/common/ServiceResponseInterface';
@@ -6,8 +6,264 @@ import { InsertUpdateDynamicColumnMap } from '../models/dynamic/InsertUpdateDyna
 import { dynamicDataGetByAnyColumnService, dynamicDataInsertService, dynamicDataUpdateService } from './dynamic.service';
 import { stringIsNullOrWhiteSpace } from '../utils/commonHelpers/ValidationHelper';
 import { ProductionEntriesTypesEnum } from '../models/enum/GlobalEnums';
+import { DynamicCud } from './dynamic-crud.service';
+import { BusinessError } from '../configurations/error';
 
 class InventoryService {
+    public async create(data: any, user: any): Promise<any> {
+        return withConnectionDatabase(async (connection: PoolConnection) => {
+            await connection.beginTransaction();
+            try {
+                const [skuResult]: any = await connection.query(`
+                        SELECT
+                            product_name as name
+                        FROM
+                            products
+                        WHERE
+                            is_active = 1 AND sku = ?
+                    `, data.sku);
+                if (skuResult[0]) {
+                    throw new BusinessError(400, `Product '${skuResult[0].name}' already exists with the same SKU`)
+                }
+
+                const productsTableValues = {
+                    product_name: data.name,
+                    short_description: data.shortDescription,
+                    sku: data.sku,
+                    is_active: true,
+                    price: 0,
+                    stockquantity: data.quantity,
+                    unit_type: data.type,
+                    weight_unit_id: data.weightUnitId,
+                    weight_value: data.weight,
+                    source: data.source,
+                    created_on: new Date(),
+                    created_by: user.id,
+                }
+                const { insertId: productId } = await DynamicCud.insert('products', productsTableValues, connection);
+
+                const inventoryInfoUnitsTableValues: any = [
+                    {
+                        productid: productId,
+                        unit_type: 3,
+                        unit_sub_type: 'Micron',
+                        unit_id: 0,
+                        unit_value: data.micron,
+                        created_on: new Date(),
+                        created_by: user.id
+                    },
+                    {
+                        productid: productId,
+                        unit_type: 3,
+                        unit_sub_type: 'Width',
+                        unit_id: data.widthUnitId,
+                        unit_value: data.width,
+                        created_on: new Date(),
+                        created_by: user.id
+                    },
+                    {
+                        productid: productId,
+                        unit_type: 3,
+                        unit_sub_type: 'Length',
+                        unit_id: data.lengthUnitId,
+                        unit_value: data.length,
+                        created_on: new Date(),
+                        created_by: user.id
+                    }
+                ];
+                await DynamicCud.bulkInsert('inventory_units_info', inventoryInfoUnitsTableValues, connection);
+
+
+                const inventoryLedgerTableValues: any = {
+                    productid: productId,
+                    foreign_key_table_name: 'products',
+                    foreign_key_name: 'productid',
+                    foreign_key_value: productId,
+                    quantity: data.quantity,
+                    weight_quantity_value: data.weight,
+                    action_type: ProductionEntriesTypesEnum.NewProductEntry,
+                    created_at: new Date(),
+                };
+                await DynamicCud.insert('inventory_ledger', inventoryLedgerTableValues, connection);
+
+                await connection.commit();
+
+                return { id: productId };
+            } catch (error) {
+                await connection.rollback();
+                throw error;
+            } finally {
+                connection.release();
+            }
+        });
+    }
+
+    public async update(data: any, user: any): Promise<void> {
+        return withConnectionDatabase(async (connection: PoolConnection) => {
+            try {
+                const productsTableValues = {
+                    product_name: data.productName,
+                    short_description: data.shortDescription,
+                    updated_on: new Date(),
+                    updated_by: user.id,
+                }
+                await DynamicCud.update('products', data.id, 'productid', productsTableValues, connection);
+            } finally {
+                connection.release();
+            }
+        });
+    }
+
+    public async delete(id: any, user: any): Promise<any> {
+        withConnectionDatabase(async (connection: PoolConnection) => {
+            try {
+                const productsTableValues = {
+                    is_active: false,
+                    updated_on: new Date(),
+                    updated_by: user.id,
+                }
+                await DynamicCud.update('products', id, 'productid', productsTableValues, connection);
+            } finally {
+                connection.release();
+            }
+        });
+    }
+
+    public async getById(id: any): Promise<any> {
+        return withConnectionDatabase(async (connection: PoolConnection) => {
+            try {
+                const [result]: any = await connection.query(`
+                        SELECT 
+                            p.productid AS id,
+                            p.product_name AS name,
+                            p.short_description AS shortDescription,
+                            p.sku,
+                            p.stockquantity AS quantity,
+                            p.weight_value AS weight,
+                            p.weight_unit_id AS weightUnitId,
+                            p.unit_type AS type,
+                            p.source,
+                            li.unit_value AS length,
+                            li.unit_id AS lengthUnitId,
+                            wi.unit_value AS width,
+                            wi.unit_id AS widthUnitId,
+                            mi.unit_value AS micron
+                        FROM
+                            products p
+                        LEFT JOIN
+                            inventory_units_info li 
+                            ON p.productid = li.productid AND li.unit_sub_type = 'Length'
+                        LEFT JOIN
+                            inventory_units_info wi 
+                            ON p.productid = wi.productid AND wi.unit_sub_type = 'Width'
+                        LEFT JOIN
+                            inventory_units_info mi 
+                            ON p.productid = mi.productid AND mi.unit_sub_type IN ('Micron', 'Micon')
+                        WHERE
+                            p.productid = ?
+                        LIMIT 1;
+                    `, [id]);
+                return { ...result[0] };
+            } finally {
+                connection.release();
+            }
+        });
+    }
+
+    public async get(filter: any): Promise<any> {
+        return withConnectionDatabase(async (connection: PoolConnection) => {
+            try {
+                const whereClauses: string[] = [];
+                const params: any[] = [];
+
+                if (filter.isActive) {
+                    whereClauses.push('p.is_active = ?');
+                    params.push(filter.isActive);
+                }
+
+                if (filter.source) {
+                    whereClauses.push('p.source = ?');
+                    params.push(filter.source);
+                }
+                
+                if (filter.sku) {
+                    whereClauses.push('p.sku = ? ');
+                    params.push(filter.sku);
+                }
+
+                if (filter.name) {
+                    whereClauses.push('p.product_name LIKE ? ');
+                    params.push(`%${filter.name}%`);
+                }
+
+                params.push(parseInt(filter?.pageSize, 10) ?? 25);
+                params.push(parseInt(filter?.page, 10) ?? 0);
+
+                const dataQuery = `
+                    SELECT 
+                        p.productid AS id,
+                        p.product_name AS name,
+                        p.sku,
+                        p.stockquantity AS quantity,
+                        p.weight_value AS weight,
+                        p.weight_unit_id AS weightUnitId,
+                        p.unit_type AS type,
+                        p.source,
+                        p.is_active as status,
+                        p.created_on as createdOn
+                    FROM
+                        products p
+                    ${whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : ''}
+                    LIMIT ? OFFSET ?;
+                `;
+                console.log(params);
+                const [dataResult]: any = await connection.query(dataQuery, params);
+
+                const countQuery = `
+                    SELECT 
+                        COUNT(productid) as total
+                    FROM
+                        products p
+                    ${whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : ''};
+                `;
+                const [countResult]: any = await connection.query(countQuery, params);
+
+                return { totalRecords: countResult[0].total, data: dataResult };
+            } finally {
+                connection.release();
+            }
+        });
+    }
+
+    public async getUnits(): Promise<any> {
+        return withConnectionDatabase(async (connection: PoolConnection) => {
+            try {
+                const dataQuery = `
+                    SELECT 
+                        u.unit_id as id,
+                        u.unit_short_name as shortName,
+                        u.unit_full_name as fullName
+                    FROM
+                        units u;
+                `;
+                console.log('dataQuery', dataQuery);
+                const [dataResult]: any = await connection.query(dataQuery);
+
+                const countQuery = `
+                    SELECT 
+                        COUNT(u.unit_id) as total
+                    FROM
+                        units u;
+                `;
+                console.log('countQuery', countQuery);
+                const [countResult]: any = await connection.query(countQuery);
+
+                return { totalRecords: countResult[0].total, data: dataResult };
+            } finally {
+                connection.release();
+            }
+        });
+    }
 
     public async insertUpdateProductService(formData: IProductRequestForm): Promise<ServiceResponseInterface> {
 
@@ -149,7 +405,7 @@ class InventoryService {
                 searchParameters += ` AND MTBL.product_name LIKE '%${FormData.product_name}%' `;
             }
 
-            
+
 
             const offset = (FormData.pageNo - 1) * FormData.pageSize;
             const [results]: any = await connection.query(`
