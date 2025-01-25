@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import InventoryController from '../controllers/inventory.controller';
 import { auth } from '../middlewares/auth.middleware';
+import InventoryController from '../controllers/inventory.controller';
 
 
 const inventoryRoutes = Router();
@@ -15,6 +15,7 @@ inventoryRoutes.get('/get-product-detail-by-id/:productid', inventoryController.
 inventoryRoutes.get('/get_tax_rules', inventoryController.getTaxRules);
 inventoryRoutes.get('/get-units-list', inventoryController.getUnitsList);
 
+inventoryRoutes.get('/auto-complete', auth, inventoryController.autoComplete);
 inventoryRoutes.put('/', auth, inventoryController.create);
 inventoryRoutes.patch('/:id', auth, inventoryController.update);
 inventoryRoutes.delete('/:id', auth, inventoryController.delete);

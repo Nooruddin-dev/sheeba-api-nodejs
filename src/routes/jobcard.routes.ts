@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import JobCardController from '../controllers/jobcard.controller';
+import { auth } from '../middlewares/auth.middleware';
 
 
 const jobCardRoutes = Router();
 const jobCardController = new JobCardController();
 
+jobCardRoutes.get('/auto-complete', auth, jobCardController.autoComplete);
 jobCardRoutes.get('/get-products-list-for-job-card-by-search-term/:searchQueryProduct', jobCardController.gerProductsListForJobCardBySearchTermApi);
 jobCardRoutes.post('/create-job-card', jobCardController.createJobCardApi);
 jobCardRoutes.get('/get-job-card-list', jobCardController.getAllJobCardsListApi);
@@ -18,6 +20,5 @@ jobCardRoutes.get('/get-job-dispatch-report-data-by-id/:card_dispatch_info_id', 
 jobCardRoutes.get('/get-machine-based-report-api', jobCardController.getMachineBaseReportApi);
 jobCardRoutes.get('/get-all-products-for-production-entry', jobCardController.getAllProductsForProductionEntryApi);
 jobCardRoutes.get('/dispatch-auto-complete', jobCardController.getDispatchForAutoComplete);
-
 
 export default jobCardRoutes;

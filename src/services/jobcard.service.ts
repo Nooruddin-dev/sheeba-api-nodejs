@@ -10,10 +10,32 @@ import { ProductionEntriesTypesEnum } from '../models/enum/GlobalEnums';
 import { getProductQuantityFromLedger, getProductWeightValueFromLedger, getWeightAndQtyFromLedger } from './common.service';
 import { IJobCardDispatchInfoForm } from '../models/jobCardManagement/IJobCardDispatchInfoForm';
 
+export default class JobCardService {
+    public async autoComplete(value: any): Promise<any> {
+        return withConnectionDatabase(async (connection) => {
+            try {
+                const [results]: any = await connection.query(`
+                    SELECT
+                       jc.job_card_id as id,
+                       jc.job_card_no as jobCardNo,
+                       jc.weight_qty as quantity,
+                       jc.company_name as companyName,
+                       jc.product_name as productName
+                    FROM 
+                        job_cards_master jc
+                    WHERE
+                        jc.job_card_no LIKE ?
+                    LIMIT 10;
+                `, `${value}%`);
+                const finalData: any = results;
+                return finalData;
+            } finally {
+                connection.release();
+            }
+        });
+    }
 
-
-class JobCardService {
-
+    // To be deprecated
     public async gerProductsListForJobCardBySearchTermService(FormData: any): Promise<any> {
 
         return withConnectionDatabase(async (connection: any) => {
@@ -54,7 +76,6 @@ class JobCardService {
 
 
     }
-
 
     public async createJobCardService(formData: IJobCardRequestForm): Promise<ServiceResponseInterface> {
 
@@ -731,7 +752,6 @@ class JobCardService {
 
     }
 
-
     public async insertCardDispatchInfoService(formData: IJobCardDispatchInfoForm): Promise<ServiceResponseInterface> {
 
         let response: ServiceResponseInterface = {
@@ -871,7 +891,6 @@ class JobCardService {
 
     }
 
-
     public async getJobDispatchReportDataByIdService(card_dispatch_info_id: any): Promise<any> {
 
         return withConnectionDatabase(async (connection: any) => {
@@ -955,7 +974,6 @@ class JobCardService {
 
     }
 
-
     public async getMachineInfoForProductionEntry(machine_id: any): Promise<any> {
 
         return withConnectionDatabase(async (connection: any) => {
@@ -1026,7 +1044,4 @@ class JobCardService {
             return finalData;
         });
     }
-
 }
-
-export default JobCardService;

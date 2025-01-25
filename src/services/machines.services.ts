@@ -1,19 +1,39 @@
-import { Pool } from 'mysql2/promise';
 
-import { UserEntity } from '../models/user.model';
-import { connectionPool, withConnectionDatabase } from '../configurations/db';
-import { busnPartnerAddressAssociationModel } from '../models/usersManagement/busnPartnerAddressAssociationModel';
-import { busnPartnerPhoneAssociationModel } from '../models/usersManagement/busnPartnerPhoneAssociationModel';
-import { IBusnPartnerRequestForm } from '../models/usersManagement/Forms/IBusnPartnerRequestForm';
+import { withConnectionDatabase } from '../configurations/db';
 import { ServiceResponseInterface } from '../models/common/ServiceResponseInterface';
 import { IMachineRequestForm } from '../models/machines/IMachineRequestForm';
 import { dynamicDataInsertService, dynamicDataUpdateService } from './dynamic.service';
 import { stringIsNullOrWhiteSpace } from '../utils/commonHelpers/ValidationHelper';
 
-class MachinesService {
+export default class MachinesService {
+    public async autoComplete(value: any): Promise<any> {
+        return withConnectionDatabase(async (connection) => {
+            try {
+                const [results]: any = await connection.query(`
+                    SELECT
+                       m.machine_id as id,
+                       m.machine_name as name,
+                       m.machine_type_id as typeId,
+                       mt.machine_type_name as typeName
+                    FROM 
+                        machines m
+                    JOIN
+                        machine_types mt
+                        ON mt.machine_type_id = m.machine_type_id
+                    WHERE
+                        m.machine_name LIKE ?
+                    LIMIT 10;
+                `, `${value}%`);
 
+                const finalData: any = results;
+                return finalData;
+            } finally {
+                connection.release();
+            }
+        });
+    }
 
-
+    // To be deprecated
     public async getMachinesTypesService(FormData: any): Promise<any> {
 
         return withConnectionDatabase(async (connection: any) => {
@@ -34,7 +54,6 @@ class MachinesService {
 
 
     }
-
 
     public async insertUpdateMachineService(formData: IMachineRequestForm): Promise<ServiceResponseInterface> {
 
@@ -94,7 +113,6 @@ class MachinesService {
         return response;
     }
 
-
     public async getMachineDetailsByMachineNameService(machine_name: string): Promise<any> {
 
         return withConnectionDatabase(async (connection: any) => {
@@ -142,8 +160,4 @@ class MachinesService {
 
 
     }
-
-
 }
-
-export default MachinesService;

@@ -5,7 +5,7 @@ import { ServiceResponseInterface } from '../models/common/ServiceResponseInterf
 import { InsertUpdateDynamicColumnMap } from '../models/dynamic/InsertUpdateDynamicColumnMap';
 import { dynamicDataGetByAnyColumnService, dynamicDataInsertService, dynamicDataUpdateService } from './dynamic.service';
 import { stringIsNullOrWhiteSpace } from '../utils/commonHelpers/ValidationHelper';
-import { ProductionEntriesTypesEnum } from '../models/enum/GlobalEnums';
+import { ProductionEntriesTypesEnum, UnitTypesEnum } from '../models/enum/GlobalEnums';
 import { DynamicCud } from './dynamic-crud.service';
 import { BusinessError } from '../configurations/error';
 
@@ -42,36 +42,38 @@ class InventoryService {
                 }
                 const { insertId: productId } = await DynamicCud.insert('products', productsTableValues, connection);
 
-                const inventoryInfoUnitsTableValues: any = [
-                    {
-                        productid: productId,
-                        unit_type: 3,
-                        unit_sub_type: 'Micron',
-                        unit_id: 0,
-                        unit_value: data.micron,
-                        created_on: new Date(),
-                        created_by: user.id
-                    },
-                    {
-                        productid: productId,
-                        unit_type: 3,
-                        unit_sub_type: 'Width',
-                        unit_id: data.widthUnitId,
-                        unit_value: data.width,
-                        created_on: new Date(),
-                        created_by: user.id
-                    },
-                    {
-                        productid: productId,
-                        unit_type: 3,
-                        unit_sub_type: 'Length',
-                        unit_id: data.lengthUnitId,
-                        unit_value: data.length,
-                        created_on: new Date(),
-                        created_by: user.id
-                    }
-                ];
-                await DynamicCud.bulkInsert('inventory_units_info', inventoryInfoUnitsTableValues, connection);
+                if (data.type === UnitTypesEnum.Roll) {
+                    const inventoryInfoUnitsTableValues: any = [
+                        {
+                            productid: productId,
+                            unit_type: 3,
+                            unit_sub_type: 'Micron',
+                            unit_id: 0,
+                            unit_value: data.micron,
+                            created_on: new Date(),
+                            created_by: user.id
+                        },
+                        {
+                            productid: productId,
+                            unit_type: 3,
+                            unit_sub_type: 'Width',
+                            unit_id: data.widthUnitId,
+                            unit_value: data.width,
+                            created_on: new Date(),
+                            created_by: user.id
+                        },
+                        {
+                            productid: productId,
+                            unit_type: 3,
+                            unit_sub_type: 'Length',
+                            unit_id: data.lengthUnitId,
+                            unit_value: data.length,
+                            created_on: new Date(),
+                            created_by: user.id
+                        }
+                    ];
+                    await DynamicCud.bulkInsert('inventory_units_info', inventoryInfoUnitsTableValues, connection);
+                }
 
 
                 const inventoryLedgerTableValues: any = {
@@ -185,7 +187,7 @@ class InventoryService {
                     whereClauses.push('p.source = ?');
                     params.push(filter.source);
                 }
-                
+
                 if (filter.sku) {
                     whereClauses.push('p.sku = ? ');
                     params.push(filter.sku);
@@ -265,6 +267,49 @@ class InventoryService {
         });
     }
 
+    public async autoComplete(filter: any): Promise<any> {
+        return withConnectionDatabase(async (connection) => {
+            try {
+                const whereClauses: string[] = [];
+                const params: any[] = [];
+
+                if (filter.source) {
+                    whereClauses.push('p.source = ?');
+                    params.push(filter.source);
+                }
+
+                if (filter.value) {
+                    whereClauses.push('(p.product_name LIKE ? OR p.sku LIKE ?)');
+                    params.push(`${filter.value}%`);
+                    params.push(`${filter.value}%`);
+                }
+
+                const query = `
+                    SELECT
+                       p.productid as id,
+                       p.product_name as name,
+                       p.sku as sku,
+                       p.source as source,
+                       p.unit_type as typeId
+                    FROM 
+                        products p
+                    WHERE
+                        p.is_active = 1 ${whereClauses.length ? 'AND ' + whereClauses.join(' AND ') : ''}
+                    LIMIT 10;
+                `;
+                console.log('query', query);
+                const [results]: any = await connection.query(query, params);
+
+
+                const finalData: any = results;
+                return finalData;
+            } finally {
+                connection.release();
+            }
+        });
+    }
+
+    // To be deprecated
     public async insertUpdateProductService(formData: IProductRequestForm): Promise<ServiceResponseInterface> {
 
 
@@ -387,7 +432,6 @@ class InventoryService {
         return response;
     }
 
-
     public async getAllProductsService(FormData: any): Promise<any> {
 
         return withConnectionDatabase(async (connection: any) => {
@@ -409,8 +453,8 @@ class InventoryService {
 
             const offset = (FormData.pageNo - 1) * FormData.pageSize;
             const [results]: any = await connection.query(`
-                SELECT COUNT(*) OVER () as TotalRecords, 
-                MTBL.*, u.*
+                SELECT COUNT(*) OVER() as TotalRecords,
+                    MTBL.*, u.*
                 FROM products MTBL
                 JOIN units u
                 on u.unit_id = MTBL.weight_unit_id
@@ -418,7 +462,7 @@ class InventoryService {
                 ${searchParameters}
                 ORDER BY MTBL.productid DESC
                 LIMIT ${FormData.pageSize} OFFSET ${offset}
-            `);
+                    `);
 
             if (results && results.length > 0) {
                 //--get inventory_units_info      
@@ -453,23 +497,23 @@ class InventoryService {
             }
 
             if (stringIsNullOrWhiteSpace(searchQueryProduct) == false) {
-                searchParameters += ` AND ( MTBL.productid LIKE '%${searchQueryProduct}%' OR
+                searchParameters += ` AND(MTBL.productid LIKE '%${searchQueryProduct}%' OR
                      MTBL.product_name LIKE '%${searchQueryProduct}%' OR
-                     MTBL.SKU LIKE '%${searchQueryProduct}%' )`;
+                     MTBL.SKU LIKE '%${searchQueryProduct}%')`;
             }
 
 
 
             const offset = (FormData.pageNo - 1) * FormData.pageSize;
             const [results]: any = await connection.query(`
-                SELECT COUNT(*) OVER () as TotalRecords, 
-                MTBL.*
-                FROM products MTBL
+                SELECT COUNT(*) OVER() as TotalRecords,
+                    MTBL.*
+                    FROM products MTBL
                 WHERE MTBL.productid IS NOT NULL AND MTBL.is_active = 1
                 ${searchParameters}
                 ORDER BY MTBL.productid DESC
                 LIMIT ${FormData.pageSize} OFFSET ${offset}
-            `);
+                    `);
 
             const finalData: any = results;
             return finalData;
@@ -485,7 +529,7 @@ class InventoryService {
                 SELECT MTBL.*, u.unit_short_name
                 FROM products MTBL
                 JOIN units u on u.unit_id = MTBL.weight_unit_id
-                WHERE MTBL.productid  = ${productid};`);
+                WHERE MTBL.productid = ${productid}; `);
 
             if (results) {
                 const finalData: any = results[0];
@@ -493,8 +537,8 @@ class InventoryService {
                     //-- Get latest order item for a sepecific product
                     const [resultLatestProductPurchaseOrder]: any = await connection.query(`
                         SELECT MTBL.*
-                        FROM purchase_orders_items MTBL
-                        WHERE MTBL.product_id  = ${productid}
+                    FROM purchase_orders_items MTBL
+                        WHERE MTBL.product_id = ${productid}
                         ORDER BY MTBL.line_item_id DESC
                         LIMIT 1; `);
                     if (resultLatestProductPurchaseOrder) {
@@ -504,12 +548,12 @@ class InventoryService {
                     }
 
                     const [resultProductUnitInfo]: any = await connection.query(`
-                        select mtbl.product_unit_info_id, mtbl.productid, mtbl.unit_type, mtbl.unit_sub_type, mtbl.unit_id ,  mtbl.unit_value ,
-                        unt.unit_short_name  
+                        select mtbl.product_unit_info_id, mtbl.productid, mtbl.unit_type, mtbl.unit_sub_type, mtbl.unit_id, mtbl.unit_value,
+                    unt.unit_short_name  
                         From inventory_units_info mtbl
                         left join units unt on unt.unit_id = mtbl.unit_id
-                        WHERE mtbl.productid  = ${productid} ;
-                        `);
+                        WHERE mtbl.productid = ${productid};
+                `);
 
                     if (resultProductUnitInfo) {
                         finalData.product_units_info = resultProductUnitInfo;
@@ -530,14 +574,13 @@ class InventoryService {
 
     }
 
-
     public async getTaxRulesService(FormData: any): Promise<any> {
 
         return withConnectionDatabase(async (connection: any) => {
             let searchParameters = '';
 
             if (FormData.machine_id > 0) {
-                searchParameters += ` AND mtbl.tax_rule_id = ${FormData.tax_rule_id}`;
+                searchParameters += ` AND mtbl.tax_rule_id = ${FormData.tax_rule_id} `;
             }
 
             if (stringIsNullOrWhiteSpace(FormData.tax_rule_type) == false) {
@@ -546,14 +589,14 @@ class InventoryService {
 
             const offset = (FormData.pageNo - 1) * FormData.pageSize;
             const [results]: any = await connection.query(`
-                SELECT COUNT(*) OVER () as totalRecords, mtbl.*, tc.category_name
+                SELECT COUNT(*) OVER() as totalRecords, mtbl.*, tc.category_name
                 FROM tax_rules mtbl
                 INNER JOIN tax_categories tc on tc.tax_category_id = mtbl.tax_category_id
                 WHERE mtbl.tax_rule_id IS NOT NULL
                 ${searchParameters}
                 ORDER BY mtbl.tax_rule_id DESC
                 LIMIT ${FormData.pageSize} OFFSET ${offset}
-            `);
+                `);
 
             const userData: any = results;
             return userData;
@@ -570,12 +613,12 @@ class InventoryService {
 
             const offset = (FormData.pageNo - 1) * FormData.pageSize;
             const [results]: any = await connection.query(`
-                SELECT COUNT(*) OVER () as totalRecords, mtbl.*
-                FROM units mtbl
+                SELECT COUNT(*) OVER() as totalRecords, mtbl.*
+                    FROM units mtbl
                 WHERE mtbl.unit_id IS NOT NULL
                 ORDER BY mtbl.unit_id ASC
                 LIMIT ${FormData.pageSize} OFFSET ${offset}
-            `);
+                `);
 
             const userData: any = results;
             return userData;
@@ -584,7 +627,6 @@ class InventoryService {
 
 
     }
-
 }
 
 export default InventoryService;

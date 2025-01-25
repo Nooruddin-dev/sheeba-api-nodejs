@@ -31,6 +31,8 @@ export class DynamicCud {
         // Execute the insert query
         const [result]: any = await connection.execute(query, values);
 
+        console.log('Result:', result);
+
         return { insertId: result.insertId, message: 'Record inserted successfully' };
     }
 

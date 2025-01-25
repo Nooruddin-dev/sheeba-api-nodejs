@@ -10,7 +10,7 @@ class SaleInvoiceService {
     public async createSaleInvoice(param: any) {
         const connection = await connectionPool.getConnection();
         try {
-            connection.beginTransaction();
+            await connection.beginTransaction();
 
             // Insert into sale_invoice table
             const saleInvoice = {
@@ -61,7 +61,7 @@ class SaleInvoiceService {
             const saleInvoiceNo = 'S' + (saleInvoiceId as number).toString().padStart(7, '0');
             await dynamicDataUpdateServiceWithConnection('sale_invoice', 'id', saleInvoiceId as number, { saleInvoiceNo: saleInvoiceNo }, connection);
 
-            connection.commit();
+            await connection.commit();
 
             return {
                 success: true,
@@ -69,18 +69,10 @@ class SaleInvoiceService {
                 primaryKeyValue: saleInvoiceId
             };
         } catch (error) {
-            console.error(error);
-            connection.rollback();
+            await connection.rollback();
             throw error;
         } finally {
-            if (connection) {
-                if (typeof connection.release === 'function') {
-                    await connection.release();
-                } else if (typeof connection.end === 'function') {
-                    await connection.end();
-                }
-
-            }
+            connection.release();
         }
     }
 

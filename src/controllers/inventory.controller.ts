@@ -9,13 +9,12 @@ import { AuthRequest } from '../middlewares/auth.middleware';
 import { HandleError } from '../configurations/error';
 
 
-class InventoryController {
-    private inventoryService: InventoryService;
-
-
+export default class InventoryController {
     constructor() {
         this.inventoryService = new InventoryService();
     }
+
+    private readonly inventoryService: InventoryService;
 
     public create = async (req: Request, res: Response): Promise<void> => {
         try {
@@ -29,7 +28,8 @@ class InventoryController {
 
     public update = async (req: Request, res: Response): Promise<void> => {
         try {
-            await this.inventoryService.update(req.body, (req as AuthRequest).user);
+            const { id } = req.params;
+            await this.inventoryService.update({ id, ...req.body }, (req as AuthRequest).user);
             res.status(200).json({ message: 'Inventory updated successfully' });
         }
         catch (error) {
@@ -79,7 +79,18 @@ class InventoryController {
         }
     }
 
+    public autoComplete = async (req: Request, res: Response): Promise<void> => {
+        try {
+            console.log('autoComplete', req.query);;
+            const data = await this.inventoryService.autoComplete(req.query);
+            res.status(200).json(data);
+        }
+        catch (error) {
+            HandleError(res, error);
+        }
+    }
 
+    // To be deprecated
     public insertUpdateProduct = async (req: Request, res: Response) => {
         try {
 
@@ -165,7 +176,6 @@ class InventoryController {
         }
     };
 
-
     public getAllProducts = async (req: Request, res: Response): Promise<void> => {
 
 
@@ -201,7 +211,6 @@ class InventoryController {
 
 
     }
-
 
     public getProductsListBySearchTermApi = async (req: Request, res: Response): Promise<void> => {
 
@@ -273,7 +282,6 @@ class InventoryController {
 
     }
 
-
     public getTaxRules = async (req: Request, res: Response): Promise<void> => {
 
 
@@ -310,7 +318,6 @@ class InventoryController {
 
     }
 
-
     public getUnitsList = async (req: Request, res: Response): Promise<void> => {
 
 
@@ -338,8 +345,3 @@ class InventoryController {
 
     }
 }
-
-
-
-
-export default InventoryController;

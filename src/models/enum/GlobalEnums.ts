@@ -26,6 +26,16 @@ export const BusinessPartnerTypesEnum : any = {
     NewProductionEntry = "NewProductionEntry",
     EditProductionEntry = "EditProductionEntry",
   }
+
+  export enum ProductSourceEnum {
+    External = 'External',
+    Internal = 'Internal'
+  }
+
+  export enum ProductionEntryProductUsageType {
+    Consumed = 'Consumed',
+    Produced = 'Produced'
+  }
   
 
 
