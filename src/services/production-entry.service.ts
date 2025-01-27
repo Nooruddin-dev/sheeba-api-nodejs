@@ -121,7 +121,7 @@ export class ProductionEntryService {
                 const params: any[] = [];
 
                 if (filter.jobCardNo) {
-                    whereClauses.push('jc.job_card_no = ?');
+                    whereClauses.push('jc.job_card_no LIKE ?');
                     params.push(`${filter.jobCardNo}%`);
                 }
 
@@ -165,8 +165,12 @@ export class ProductionEntryService {
                         products p
                         ON p.productid = pep.product_id
                     ${whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : ''}
+                    ORDER BY
+                        pe.date DESC
                     LIMIT ? OFFSET ?;
                 `;
+
+                console.log('dataQuery', dataQuery);
                 const [dataResult]: any = await connection.query(dataQuery, params);
 
                 const countQuery = `
@@ -191,6 +195,53 @@ export class ProductionEntryService {
                 const [countResult]: any = await connection.query(countQuery, params);
 
                 return { totalRecords: countResult[0].total, data: dataResult };
+            } finally {
+                connection.release();
+            }
+        });
+    }
+
+    public async getLatestConsumedProducts(jobCardId: any): Promise<any> {
+        return withConnectionDatabase(async (connection) => {
+            try {
+                const maxProductionEntryIdQuery = `
+                    SELECT
+                        max(pep.production_entry_id) as id
+                    FROM
+                        production_entry_product pep
+                    WHERE
+                        pep.job_card_id = ?
+                        AND pep.usage_type = ?
+                    LIMIT 1;
+                `;
+                const [maxProductionEntryIdResult]: any = await connection.query(maxProductionEntryIdQuery, [jobCardId, ProductionEntryProductUsageType.Consumed]);
+                if (maxProductionEntryIdResult?.length) {
+                    const dataQuery = `
+                    SELECT 
+                        pep.quantity as quantity,
+                        pep.gross_weight as grossWeight,
+                        pep.waste_weight as wasteWeight,
+                        pep.net_weight as netWeight,
+                        pep.tare as tareWeight,
+                        pep.percentage as percentage,
+                        pep.product_id as productId,
+                        p.product_name as productName,
+                        p.sku as productSku
+                    FROM
+                        production_entry_product pep
+                    JOIN
+                        products p
+                        ON p.productid = pep.product_id
+                    WHERE
+                        pep.production_entry_id = ?
+                        AND pep.usage_type = ?
+                `;
+                    const [dataResult]: any = await connection.query(dataQuery, [maxProductionEntryIdResult[0].id, ProductionEntryProductUsageType.Consumed]);
+
+                    return dataResult;
+                }
+
+                return [];
             } finally {
                 connection.release();
             }
