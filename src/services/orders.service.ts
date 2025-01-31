@@ -154,7 +154,7 @@ class OrdersService {
                             }
                             var responseOrderItem = await dynamicDataInsertServiceNew(purchaseOrderItemsTableMainData.tableName, purchaseOrderItemsTableMainData.primaryKeyName,
                                 purchaseOrderItemsTableMainData.primaryKeyValue, purchaseOrderItemsTableMainData.isAutoIncremented, columnsPurchaseOrderItem, connection);
-                            const prodColUpdate = { remaining_weight: (productDetail.data?.remaining_weight ?? 0) + product.weight };
+                                const prodColUpdate = { remaining_weight: (productDetail.data?.remaining_weight ?? 0) + product.weight };
                             await dynamicDataUpdateServiceWithConnection('products', 'productid', product.product_id, prodColUpdate, connection);
                         }
                     }
@@ -409,6 +409,11 @@ class OrdersService {
                 };
 
 
+                //--first get order latest status before update
+                const purchaseOrderLatestStatus = await this.getPurchaseOrderLatestStatusService(formData.purchase_order_id);
+
+
+
                 // Execute the update query
                 const [result]: any = await connection.execute(`UPDATE purchase_order_status_mapping
                       SET is_active = 0 where purchase_order_id = ${formData.purchase_order_id};`);
@@ -457,8 +462,12 @@ class OrdersService {
                     sendEmailFunc(vendorDetail?.data?.EmailAddress, subject, html);
                 }
 
+
+                
+
                 if (formData.status_id == PurchaseOrderStatusTypesEnum.Cancel) {
                     const purchaseOrderDetail = await dynamicDataGetService("purchase_orders", "purchase_order_id", formData.purchase_order_id);
+
 
                     // Send email
                     const orderVendorId = purchaseOrderDetail?.data?.vendor_id;
@@ -469,7 +478,24 @@ class OrdersService {
                             <p>The status of your purchase order <b>${purchaseOrderDetail?.data.po_number}</b> has been cancelled.</p><br>
                             <a href="${purchaseOrdersLink}">View Purchase Order</a>
                         `;
-                    sendEmailFunc('admin@sheebasite.com', subject, html);
+                    sendEmailFunc(ROOT_EMAIL, subject, html);
+
+
+                    //--if previous status is approved then send email to vendor also
+                    if (purchaseOrderLatestStatus?.status_id == PurchaseOrderStatusTypesEnum.Approve) {
+                        
+                        const orderVendorId = purchaseOrderDetail?.data?.vendor_id;
+                        const vendorDetail = await dynamicDataGetService("busnpartner", "BusnPartnerId", orderVendorId);
+                        const purchaseOrdersLink = `${WEB_APP_URL}/site/vendor/purchase-order-details/${formData.purchase_order_id}`;
+                        const subject = 'Purchase order has been cancelled from approved';
+                        const html = `
+                            <p>The status of your purchase order <b>${purchaseOrderDetail?.data.po_number}</b> has been cancelled from approved.</p><br>
+                            <a href="${purchaseOrdersLink}">View Purchase Order</a>
+                        `;
+                        sendEmailFunc(vendorDetail?.data?.EmailAddress, subject, html);
+                    }
+
+
                 }
 
 
