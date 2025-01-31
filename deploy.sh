@@ -1,4 +1,6 @@
 #!/bin/bash
+echo "Building app..."
+npm run build
 
 # Variables
 read -p "Enter SSH Username: " SERVER_USER
