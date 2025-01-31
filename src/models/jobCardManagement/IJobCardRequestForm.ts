@@ -38,5 +38,8 @@ export interface IJobCardRequestForm {
 
     jobCardAllProducts: IJobCardProduct[];
 
+    produce_product_size: number;
+    produce_product_micron: number;
+
     createByUserId?: number;
 }

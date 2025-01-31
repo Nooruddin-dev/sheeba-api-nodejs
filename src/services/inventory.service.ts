@@ -14,83 +14,7 @@ class InventoryService {
         return withConnectionDatabase(async (connection: PoolConnection) => {
             await connection.beginTransaction();
             try {
-                const [skuResult]: any = await connection.query(`
-                        SELECT
-                            product_name as name
-                        FROM
-                            products
-                        WHERE
-                            is_active = 1 AND sku = ?
-                    `, data.sku);
-                if (skuResult[0]) {
-                    throw new BusinessError(400, `Product '${skuResult[0].name}' already exists with the same SKU`)
-                }
-
-                const productsTableValues = {
-                    product_name: data.name,
-                    short_description: data.shortDescription,
-                    sku: data.sku,
-                    is_active: true,
-                    price: 0,
-                    stockquantity: data.quantity,
-                    unit_type: data.type,
-                    weight_unit_id: data.weightUnitId,
-                    weight_value: data.weight,
-                    source: data.source,
-                    created_on: new Date(),
-                    created_by: user.id,
-                }
-                const { insertId: productId } = await DynamicCud.insert('products', productsTableValues, connection);
-
-                if (data.type === UnitTypesEnum.Roll) {
-                    const inventoryInfoUnitsTableValues: any = [
-                        {
-                            productid: productId,
-                            unit_type: 3,
-                            unit_sub_type: 'Micron',
-                            unit_id: 0,
-                            unit_value: data.micron,
-                            created_on: new Date(),
-                            created_by: user.id
-                        },
-                        {
-                            productid: productId,
-                            unit_type: 3,
-                            unit_sub_type: 'Width',
-                            unit_id: data.widthUnitId,
-                            unit_value: data.width,
-                            created_on: new Date(),
-                            created_by: user.id
-                        },
-                        {
-                            productid: productId,
-                            unit_type: 3,
-                            unit_sub_type: 'Length',
-                            unit_id: data.lengthUnitId,
-                            unit_value: data.length,
-                            created_on: new Date(),
-                            created_by: user.id
-                        }
-                    ];
-                    await DynamicCud.bulkInsert('inventory_units_info', inventoryInfoUnitsTableValues, connection);
-                }
-
-
-                const inventoryLedgerTableValues: any = {
-                    productid: productId,
-                    foreign_key_table_name: 'products',
-                    foreign_key_name: 'productid',
-                    foreign_key_value: productId,
-                    quantity: data.quantity,
-                    weight_quantity_value: data.weight,
-                    action_type: ProductionEntriesTypesEnum.NewProductEntry,
-                    created_at: new Date(),
-                };
-                await DynamicCud.insert('inventory_ledger', inventoryLedgerTableValues, connection);
-
-                await connection.commit();
-
-                return { id: productId };
+                return this.createWithConnection(data, user, connection);
             } catch (error) {
                 await connection.rollback();
                 throw error;
@@ -212,9 +136,18 @@ class InventoryService {
                         p.unit_type AS type,
                         p.source,
                         p.is_active as status,
-                        p.created_on as createdOn
+                        p.created_on as createdOn,
+                        wi.unit_value AS width,
+                        wi.unit_id AS widthUnitId,
+                        mi.unit_value AS micron
                     FROM
                         products p
+                    LEFT JOIN
+                        inventory_units_info wi 
+                        ON p.productid = wi.productid AND wi.unit_sub_type = 'Width'
+                    LEFT JOIN
+                        inventory_units_info mi 
+                        ON p.productid = mi.productid AND mi.unit_sub_type IN ('Micron', 'Micon')
                     ${whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : ''}
                     LIMIT ? OFFSET ?;
                 `;
@@ -307,6 +240,86 @@ class InventoryService {
                 connection.release();
             }
         });
+    }
+
+    public async createWithConnection(data: any, user: any, connection: any): Promise<any> {
+        const [skuResult]: any = await connection.query(`
+            SELECT
+                product_name as name
+            FROM
+                products
+            WHERE
+                is_active = 1 AND sku = ?
+        `, data.sku);
+        if (skuResult[0]) {
+            throw new BusinessError(400, `Product '${skuResult[0].name}' already exists with the same SKU`)
+        }
+
+        const productsTableValues = {
+            product_name: data.name,
+            short_description: data.shortDescription,
+            sku: data.sku,
+            is_active: true,
+            price: 0,
+            stockquantity: data.quantity,
+            unit_type: data.type,
+            weight_unit_id: data.weightUnitId,
+            weight_value: data.weight,
+            source: data.source,
+            created_on: new Date(),
+            created_by: user.id,
+        }
+        const { insertId: productId } = await DynamicCud.insert('products', productsTableValues, connection);
+
+        if (data.type.toString() === UnitTypesEnum.Roll) {
+            const inventoryInfoUnitsTableValues: any = [
+                {
+                    productid: productId,
+                    unit_type: 3,
+                    unit_sub_type: 'Micron',
+                    unit_id: 0,
+                    unit_value: data.micron,
+                    created_on: new Date(),
+                    created_by: user.id
+                },
+                {
+                    productid: productId,
+                    unit_type: 3,
+                    unit_sub_type: 'Width',
+                    unit_id: data.widthUnitId,
+                    unit_value: data.width,
+                    created_on: new Date(),
+                    created_by: user.id
+                },
+                {
+                    productid: productId,
+                    unit_type: 3,
+                    unit_sub_type: 'Length',
+                    unit_id: data.lengthUnitId,
+                    unit_value: data.length,
+                    created_on: new Date(),
+                    created_by: user.id
+                }
+            ];
+            await DynamicCud.bulkInsert('inventory_units_info', inventoryInfoUnitsTableValues, connection);
+        }
+
+
+        const inventoryLedgerTableValues: any = {
+            productid: productId,
+            foreign_key_table_name: 'products',
+            foreign_key_name: 'productid',
+            foreign_key_value: productId,
+            quantity: data.quantity,
+            weight_quantity_value: data.weight,
+            action_type: ProductionEntriesTypesEnum.NewProductEntry,
+            created_at: new Date(),
+        };
+        await DynamicCud.insert('inventory_ledger', inventoryLedgerTableValues, connection);
+
+        await connection.commit();
+
+        return { id: productId };
     }
 
     // To be deprecated

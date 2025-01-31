@@ -6,11 +6,19 @@ import { IJobCardRequestForm } from '../models/jobCardManagement/IJobCardRequest
 import { dynamicDataGetByAnyColumnService, dynamicDataGetService, dynamicDataGetServiceWithConnection, dynamicDataInsertService, dynamicDataInsertServiceNew, dynamicDataUpdateService, dynamicDataUpdateServiceWithConnection } from './dynamic.service';
 import { JobCardStatusEnum } from '../models/jobCardManagement/IJobCardStatus';
 import { IJobProductionEntryForm } from '../models/jobCardManagement/IJobProductionEntryForm';
-import { ProductionEntriesTypesEnum } from '../models/enum/GlobalEnums';
+import { ProductionEntriesTypesEnum, ProductSourceEnum } from '../models/enum/GlobalEnums';
 import { getProductQuantityFromLedger, getProductWeightValueFromLedger, getWeightAndQtyFromLedger } from './common.service';
 import { IJobCardDispatchInfoForm } from '../models/jobCardManagement/IJobCardDispatchInfoForm';
+import InventoryService from './inventory.service';
 
 export default class JobCardService {
+
+    private readonly inventoryService: InventoryService;
+
+    constructor() {
+        this.inventoryService = new InventoryService();
+    }
+
     public async autoComplete(value: any): Promise<any> {
         return withConnectionDatabase(async (connection) => {
             try {
@@ -20,7 +28,8 @@ export default class JobCardService {
                        jc.job_card_no as jobCardNo,
                        jc.weight_qty as quantity,
                        jc.company_name as companyName,
-                       jc.product_name as productName
+                       jc.product_name as productName,
+                       jc.extruder_product_id as extruderProductId
                     FROM 
                         job_cards_master jc
                     WHERE
@@ -297,20 +306,31 @@ export default class JobCardService {
 
                     }
 
-
-
-
-
-
-                    //--update job_cards_master table "job_card_no" column
+                    //--generate job card number
                     const jobCardNo = 'JC' + job_card_id?.toString().padStart(7, '0');
+
+                    const extruderProduct = {
+                        name: `JCP-${formData.produce_product_size}-${formData.produce_product_micron}`,
+                        shortDescription: "",
+                        sku: jobCardNo,
+                        quantity: 0,
+                        weight: 0,
+                        weightUnitId: 5,
+                        type: 3,
+                        source: ProductSourceEnum.JobCard,
+                        width: formData.produce_product_size,
+                        widthUnitId: 5,
+                        length: 0,
+                        lengthUnitId: 5,
+                        micron: formData.produce_product_micron
+                    }
+                    const extruderProductResult: any = await this.inventoryService.createWithConnection(extruderProduct, { id: formData.createByUserId }, connection);
+
                     const columnsJobCardUpdate: any = {
                         job_card_no: jobCardNo,
-                        // updated_on: new Date(),
-                        // updated_by: formData.createByUserId,
-
+                        extruder_product_id: extruderProductResult.id,
                     };
-                    var responseOrderMain = await dynamicDataUpdateServiceWithConnection('job_cards_master', 'job_card_id', job_card_id, columnsJobCardUpdate, connection);
+                    await dynamicDataUpdateServiceWithConnection('job_cards_master', 'job_card_id', job_card_id, columnsJobCardUpdate, connection);
 
 
                 }

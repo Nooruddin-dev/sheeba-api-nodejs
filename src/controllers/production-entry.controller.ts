@@ -30,15 +30,4 @@ export class ProductionEntryController {
             HandleError(res, error);
         }
     }
-
-    public getLatestConsumedProducts = async (req: Request, res: Response): Promise<void> => {
-        try {
-            const { jobCardId } = req.query;
-            const result = await this.productionEntryService.getLatestConsumedProducts(jobCardId);
-            res.status(200).json(result);
-        }
-        catch (error) {
-            HandleError(res, error);
-        }
-    }
 }

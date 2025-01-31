@@ -28,8 +28,9 @@ export const BusinessPartnerTypesEnum : any = {
   }
 
   export enum ProductSourceEnum {
-    External = 'External',
-    Internal = 'Internal'
+    PurchaseOrder = 'PurchaseOrder',
+    JobCard = 'JobCard',
+    Recycle = 'Recycle'
   }
 
   export enum ProductionEntryProductUsageType {
