@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { BusinessError, HandleError } from "../configurations/error";
+import { HandleError } from "../configurations/error";
 import { ProductionEntryService } from '../services/production-entry.service';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
