@@ -1,8 +1,7 @@
 import { PoolConnection } from 'mysql2/promise';
-import { connectionPool, withConnectionDatabase } from '../configurations/db';
+import { withConnectionDatabase } from '../configurations/db';
 import { IProductRequestForm } from '../models/inventory/IProductRequestForm';
 import { ServiceResponseInterface } from '../models/common/ServiceResponseInterface';
-import { InsertUpdateDynamicColumnMap } from '../models/dynamic/InsertUpdateDynamicColumnMap';
 import { dynamicDataGetByAnyColumnService, dynamicDataInsertService, dynamicDataUpdateService } from './dynamic.service';
 import { stringIsNullOrWhiteSpace } from '../utils/commonHelpers/ValidationHelper';
 import { ProductionEntriesTypesEnum, UnitTypesEnum } from '../models/enum/GlobalEnums';
@@ -24,16 +23,64 @@ class InventoryService {
         });
     }
 
-    public async update(data: any, user: any): Promise<void> {
+    public async update(data: any, user: any): Promise<any> {
         return withConnectionDatabase(async (connection: PoolConnection) => {
             try {
+                await connection.beginTransaction();
                 const productsTableValues = {
-                    product_name: data.productName,
+                    product_name: data.name,
                     short_description: data.shortDescription,
                     updated_on: new Date(),
                     updated_by: user.id,
                 }
                 await DynamicCud.update('products', data.id, 'productid', productsTableValues, connection);
+
+                if (data.width !== undefined) {
+                    const params: any[] = [data.width];
+                    if (data.widthUnitId) {
+                        params.push(data.widthUnitId);
+                    }
+                    params.push(data.id);
+
+                    await connection.execute(`
+                        UPDATE inventory_units_info iui
+                            SET iui.unit_value = ?
+                            ${data.widthUnitId ? ', iui.unit_value = ?' : ''}
+                        WHERE
+                            iui.unit_sub_type = 'Width'
+                            AND iui.productid = ?;
+                    `, params)
+                }
+
+                if (data.length !== undefined) {
+                    const params: any[] = [data.length];
+                    if (data.lengthUnitId) {
+                        params.push(data.lengthUnitId);
+                    }
+                    params.push(data.id);
+
+                    await connection.execute(`
+                        UPDATE inventory_units_info iui
+                            SET iui.unit_value = ?
+                            ${data.widthUnitId ? ', iui.unit_value = ?' : ''}
+                        WHERE
+                            iui.unit_sub_type = 'Length'
+                            AND iui.productid = ?;
+                    `, params)
+                }
+
+                if (data.micron !== undefined) {
+                    await connection.execute(`
+                        UPDATE inventory_units_info iui
+                            SET iui.unit_value = ?
+                        WHERE
+                            iui.unit_sub_type = 'Micron'
+                            AND iui.productid = ?;
+                    `, [data.micron, data.id])
+                }
+
+                await connection.commit();
+                return { message: 'Inventory updated successfully' };
             } finally {
                 connection.release();
             }

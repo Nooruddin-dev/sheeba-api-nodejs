@@ -311,18 +311,18 @@ export default class JobCardService {
 
                     const extruderProduct = {
                         name: `JCP-${formData.produce_product_size}-${formData.produce_product_micron}`,
-                        shortDescription: "",
+                        shortDescription: "Auto created for Job #" + jobCardNo,
                         sku: jobCardNo,
                         quantity: 0,
                         weight: 0,
-                        weightUnitId: 5,
+                        weightUnitId: 1,
                         type: 3,
                         source: ProductSourceEnum.JobCard,
-                        width: formData.produce_product_size,
+                        width: 0,
                         widthUnitId: 5,
                         length: 0,
                         lengthUnitId: 5,
-                        micron: formData.produce_product_micron
+                        micron: 0
                     }
                     const extruderProductResult: any = await this.inventoryService.createWithConnection(extruderProduct, { id: formData.createByUserId }, connection);
 
