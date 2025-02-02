@@ -45,7 +45,7 @@ class InventoryService {
                     await connection.execute(`
                         UPDATE inventory_units_info iui
                             SET iui.unit_value = ?
-                            ${data.widthUnitId ? ', iui.unit_value = ?' : ''}
+                            ${data.widthUnitId ? ', iui.unit_id = ?' : ''}
                         WHERE
                             iui.unit_sub_type = 'Width'
                             AND iui.productid = ?;
@@ -62,7 +62,7 @@ class InventoryService {
                     await connection.execute(`
                         UPDATE inventory_units_info iui
                             SET iui.unit_value = ?
-                            ${data.widthUnitId ? ', iui.unit_value = ?' : ''}
+                            ${data.widthUnitId ? ', iui.unit_id = ?' : ''}
                         WHERE
                             iui.unit_sub_type = 'Length'
                             AND iui.productid = ?;
@@ -81,6 +81,32 @@ class InventoryService {
 
                 await connection.commit();
                 return { message: 'Inventory updated successfully' };
+            } finally {
+                connection.release();
+            }
+        });
+    }
+
+    public async addStock(data: any, user: any): Promise<any> {
+        return withConnectionDatabase(async (connection: PoolConnection) => {
+            try {
+                await connection.beginTransaction();
+
+                const inventoryLedgerTableValue = {
+                    productid: data.id,
+                    foreign_key_table_name: 'products',
+                    foreign_key_name: 'productid',
+                    foreign_key_value: data.id,
+                    quantity: data.quantity,
+                    weight_quantity_value: data.weight,
+                    action_type: ProductionEntriesTypesEnum.DirectReceive,
+                    created_at: data.date,
+                }
+                await DynamicCud.insert('inventory_ledger', inventoryLedgerTableValue, connection);
+                await this.updateStockValuesWithConnection(data.id, connection);
+
+                await connection.commit();
+                return { message: 'Stock updated successfully' };
             } finally {
                 connection.release();
             }
@@ -367,6 +393,24 @@ class InventoryService {
         await connection.commit();
 
         return { id: productId };
+    }
+
+    public async updateStockValuesWithConnection(id: number, connection: PoolConnection) {
+        const [inventoryLedgerResult]: any = await connection.query(`
+            SELECT
+                productid as productId,
+                sum(weight_quantity_value) as weight,
+                sum(quantity) as quantity
+            FROM
+                inventory_ledger
+            WHERE
+                productid = ?;
+        `, [id]);
+        const productTableValue = {
+            stockquantity: parseFloat(inventoryLedgerResult[0].quantity),
+            weight_value: parseFloat(inventoryLedgerResult[0].weight)
+        };
+        await DynamicCud.update('products', inventoryLedgerResult[0].productId, 'productid', productTableValue, connection);
     }
 
     // To be deprecated

@@ -37,6 +37,17 @@ export default class InventoryController {
         }
     }
 
+    public addStock = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const { id } = req.params;
+            await this.inventoryService.addStock({ id, ...req.body }, (req as AuthRequest).user);
+            res.status(200).json({ message: 'Inventory updated successfully' });
+        }
+        catch (error) {
+            HandleError(res, error);
+        }
+    }
+
     public delete = async (req: Request, res: Response): Promise<void> => {
         try {
             await this.inventoryService.delete(req.body, (req as AuthRequest).user);

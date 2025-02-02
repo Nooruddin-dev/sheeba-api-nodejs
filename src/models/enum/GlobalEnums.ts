@@ -25,6 +25,7 @@ export const BusinessPartnerTypesEnum : any = {
     NewGRN = "NewGRN",
     NewProductionEntry = "NewProductionEntry",
     EditProductionEntry = "EditProductionEntry",
+    DirectReceive = "DirectReceive",
   }
 
   export enum ProductSourceEnum {

@@ -20,6 +20,7 @@ inventoryRoutes.put('/', auth, inventoryController.create);
 inventoryRoutes.patch('/:id', auth, inventoryController.update);
 inventoryRoutes.delete('/:id', auth, inventoryController.delete);
 inventoryRoutes.get('/:id', auth, inventoryController.getById);
+inventoryRoutes.put('/:id/stock', auth, inventoryController.addStock);
 inventoryRoutes.get('/', auth, inventoryController.get);
 
 export default inventoryRoutes;
