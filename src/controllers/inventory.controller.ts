@@ -1,22 +1,96 @@
 import { Request, Response } from 'express';
-import UserService from '../services/user.service';
 import InventoryService from '../services/inventory.service';
 import { IProductRequestForm } from '../models/inventory/IProductRequestForm';
 import { ServiceResponseInterface } from '../models/common/ServiceResponseInterface';
 import { stringIsNullOrWhiteSpace } from '../utils/commonHelpers/ValidationHelper';
 import { getBusnPartnerIdFromApiHeader } from '../utils/authHelpers/AuthMainHelper';
 import { dynamicDataGetByAnyColumnService, dynamicDataGetService } from '../services/dynamic.service';
+import { AuthRequest } from '../middlewares/auth.middleware';
+import { HandleError } from '../configurations/error';
 
 
-class InventoryController {
-    private inventoryService: InventoryService;
-
-
+export default class InventoryController {
     constructor() {
         this.inventoryService = new InventoryService();
     }
 
+    private readonly inventoryService: InventoryService;
 
+    public create = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const result = await this.inventoryService.create(req.body, (req as AuthRequest).user);
+            res.status(200).json({ message: 'Inventory created successfully', id: result.id });
+        }
+        catch (error) {
+            HandleError(res, error);
+        }
+    }
+
+    public update = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const { id } = req.params;
+            await this.inventoryService.update({ id, ...req.body }, (req as AuthRequest).user);
+            res.status(200).json({ message: 'Inventory updated successfully' });
+        }
+        catch (error) {
+            HandleError(res, error);
+        }
+    }
+
+    public delete = async (req: Request, res: Response): Promise<void> => {
+        try {
+            await this.inventoryService.delete(req.body, (req as AuthRequest).user);
+            res.status(200).json({ message: 'Inventory deleted successfully' });
+        }
+        catch (error) {
+            HandleError(res, error);
+        }
+    }
+
+    public getById = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const { id } = req.params
+            const data = await this.inventoryService.getById(id);
+            res.status(200).json(data);
+        }
+        catch (error) {
+            HandleError(res, error);
+        }
+    }
+
+    public get = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const data = await this.inventoryService.get(req.query);
+            res.status(200).json(data);
+        }
+        catch (error) {
+            HandleError(res, error);
+        }
+    }
+
+    public getUnits = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const data = await this.inventoryService.getUnits();
+            console.log(data);
+            res.status(200).json(data);
+        }
+        catch (error) {
+            HandleError(res, error);
+        }
+    }
+
+    public autoComplete = async (req: Request, res: Response): Promise<void> => {
+        try {
+            console.log('autoComplete', req.query);;
+            const data = await this.inventoryService.autoComplete(req.query);
+            res.status(200).json(data);
+        }
+        catch (error) {
+            HandleError(res, error);
+        }
+    }
+
+    // To be deprecated
     public insertUpdateProduct = async (req: Request, res: Response) => {
         try {
 
@@ -70,17 +144,17 @@ class InventoryController {
                 }
 
 
-            }else if(model.productid && model.productid > 0){
+            } else if (model.productid && model.productid > 0) {
 
-                
+
                 var productNameData = await dynamicDataGetByAnyColumnService('products', 'product_name', model.product_name);
                 if (productNameData && productNameData?.data && productNameData?.data?.length > 0) {
-                    if(productNameData.data?.filter((x: { productid: number | undefined; })=>x.productid != model.productid)?.length > 0){
+                    if (productNameData.data?.filter((x: { productid: number | undefined; }) => x.productid != model.productid)?.length > 0) {
                         responseBody.responseMessage = 'Product name already exists. Please try with another!';
                         res.status(200).json({ Response: responseBody });
                         return;
                     }
-                   
+
                 }
 
             }
@@ -101,7 +175,6 @@ class InventoryController {
             res.status(500).json({ message: 'Error processing request', error });
         }
     };
-
 
     public getAllProducts = async (req: Request, res: Response): Promise<void> => {
 
@@ -138,7 +211,6 @@ class InventoryController {
 
 
     }
-
 
     public getProductsListBySearchTermApi = async (req: Request, res: Response): Promise<void> => {
 
@@ -210,7 +282,6 @@ class InventoryController {
 
     }
 
-
     public getTaxRules = async (req: Request, res: Response): Promise<void> => {
 
 
@@ -247,7 +318,6 @@ class InventoryController {
 
     }
 
-
     public getUnitsList = async (req: Request, res: Response): Promise<void> => {
 
 
@@ -274,10 +344,4 @@ class InventoryController {
 
 
     }
-
 }
-
-
-
-
-export default InventoryController;

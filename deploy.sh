@@ -1,4 +1,6 @@
 #!/bin/bash
+echo "Building app..."
+npm run build
 
 # Variables
 read -p "Enter SSH Username: " SERVER_USER
@@ -22,6 +24,7 @@ echo "Starting deployment..."
 # Step 1: SSH to server and execute commands
 sshpass -p "$PASSWORD" ssh -t $SERVER_USER@$SERVER_IP << EOF
   echo "Connected to server..."
+  source ~/.bashrc
   cd $SERVER_PATH
   echo "Current npm version: $(npm -v)"
   echo "Current node version: $(node -v)"
@@ -38,6 +41,7 @@ sshpass -p "$PASSWORD" scp $ZIP_FILE $SERVER_USER@$SERVER_IP:$SERVER_PATH
 # Step 3: SSH to extract, install dependencies, and restart the server
 sshpass -p "$PASSWORD" ssh -t $SERVER_USER@$SERVER_IP << EOF
   cd $SERVER_PATH
+  source ~/.bashrc
   echo "Current npm version: $(npm -v)"
   echo "Current node version: $(node -v)"
   echo "Extracting zip file..."

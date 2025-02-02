@@ -26,6 +26,17 @@ export const BusinessPartnerTypesEnum : any = {
     NewProductionEntry = "NewProductionEntry",
     EditProductionEntry = "EditProductionEntry",
   }
+
+  export enum ProductSourceEnum {
+    PurchaseOrder = 'PurchaseOrder',
+    JobCard = 'JobCard',
+    Recycle = 'Recycle'
+  }
+
+  export enum ProductionEntryProductUsageType {
+    Consumed = 'Consumed',
+    Produced = 'Produced'
+  }
   
 
 

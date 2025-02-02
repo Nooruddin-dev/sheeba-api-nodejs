@@ -6,14 +6,45 @@ import { IJobCardRequestForm } from '../models/jobCardManagement/IJobCardRequest
 import { dynamicDataGetByAnyColumnService, dynamicDataGetService, dynamicDataGetServiceWithConnection, dynamicDataInsertService, dynamicDataInsertServiceNew, dynamicDataUpdateService, dynamicDataUpdateServiceWithConnection } from './dynamic.service';
 import { JobCardStatusEnum } from '../models/jobCardManagement/IJobCardStatus';
 import { IJobProductionEntryForm } from '../models/jobCardManagement/IJobProductionEntryForm';
-import { ProductionEntriesTypesEnum } from '../models/enum/GlobalEnums';
+import { ProductionEntriesTypesEnum, ProductSourceEnum } from '../models/enum/GlobalEnums';
 import { getProductQuantityFromLedger, getProductWeightValueFromLedger, getWeightAndQtyFromLedger } from './common.service';
 import { IJobCardDispatchInfoForm } from '../models/jobCardManagement/IJobCardDispatchInfoForm';
+import InventoryService from './inventory.service';
 
+export default class JobCardService {
 
+    private readonly inventoryService: InventoryService;
 
-class JobCardService {
+    constructor() {
+        this.inventoryService = new InventoryService();
+    }
 
+    public async autoComplete(value: any): Promise<any> {
+        return withConnectionDatabase(async (connection) => {
+            try {
+                const [results]: any = await connection.query(`
+                    SELECT
+                       jc.job_card_id as id,
+                       jc.job_card_no as jobCardNo,
+                       jc.weight_qty as quantity,
+                       jc.company_name as companyName,
+                       jc.product_name as productName,
+                       jc.extruder_product_id as extruderProductId
+                    FROM 
+                        job_cards_master jc
+                    WHERE
+                        jc.job_card_no LIKE ?
+                    LIMIT 10;
+                `, `${value}%`);
+                const finalData: any = results;
+                return finalData;
+            } finally {
+                connection.release();
+            }
+        });
+    }
+
+    // To be deprecated
     public async gerProductsListForJobCardBySearchTermService(FormData: any): Promise<any> {
 
         return withConnectionDatabase(async (connection: any) => {
@@ -54,7 +85,6 @@ class JobCardService {
 
 
     }
-
 
     public async createJobCardService(formData: IJobCardRequestForm): Promise<ServiceResponseInterface> {
 
@@ -276,20 +306,31 @@ class JobCardService {
 
                     }
 
-
-
-
-
-
-                    //--update job_cards_master table "job_card_no" column
+                    //--generate job card number
                     const jobCardNo = 'JC' + job_card_id?.toString().padStart(7, '0');
+
+                    const extruderProduct = {
+                        name: `JCP-${formData.produce_product_size}-${formData.produce_product_micron}`,
+                        shortDescription: "Auto created for Job #" + jobCardNo,
+                        sku: jobCardNo,
+                        quantity: 0,
+                        weight: 0,
+                        weightUnitId: 1,
+                        type: 3,
+                        source: ProductSourceEnum.JobCard,
+                        width: 0,
+                        widthUnitId: 5,
+                        length: 0,
+                        lengthUnitId: 5,
+                        micron: 0
+                    }
+                    const extruderProductResult: any = await this.inventoryService.createWithConnection(extruderProduct, { id: formData.createByUserId }, connection);
+
                     const columnsJobCardUpdate: any = {
                         job_card_no: jobCardNo,
-                        // updated_on: new Date(),
-                        // updated_by: formData.createByUserId,
-
+                        extruder_product_id: extruderProductResult.id,
                     };
-                    var responseOrderMain = await dynamicDataUpdateServiceWithConnection('job_cards_master', 'job_card_id', job_card_id, columnsJobCardUpdate, connection);
+                    await dynamicDataUpdateServiceWithConnection('job_cards_master', 'job_card_id', job_card_id, columnsJobCardUpdate, connection);
 
 
                 }
@@ -731,7 +772,6 @@ class JobCardService {
 
     }
 
-
     public async insertCardDispatchInfoService(formData: IJobCardDispatchInfoForm): Promise<ServiceResponseInterface> {
 
         let response: ServiceResponseInterface = {
@@ -871,7 +911,6 @@ class JobCardService {
 
     }
 
-
     public async getJobDispatchReportDataByIdService(card_dispatch_info_id: any): Promise<any> {
 
         return withConnectionDatabase(async (connection: any) => {
@@ -955,7 +994,6 @@ class JobCardService {
 
     }
 
-
     public async getMachineInfoForProductionEntry(machine_id: any): Promise<any> {
 
         return withConnectionDatabase(async (connection: any) => {
@@ -1026,7 +1064,4 @@ class JobCardService {
             return finalData;
         });
     }
-
 }
-
-export default JobCardService;

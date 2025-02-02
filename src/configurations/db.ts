@@ -19,7 +19,7 @@ export const connectionPool = mysql.createPool({
   // database: 'sheba_inventory_sys_db',
 });
 
-export async function withConnectionDatabase(fn: any) {
+export async function withConnectionDatabase<T>(fn: (connection: mysql.PoolConnection) => T) {
   const connection = await connectionPool.getConnection();
   try {
     return await fn(connection);

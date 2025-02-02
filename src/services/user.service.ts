@@ -185,7 +185,6 @@ console.log( 'Password' ,Password);
       throw error;
     } finally {
       if (connection) {
-        //connection.end();
         connection.release();
       }
     }

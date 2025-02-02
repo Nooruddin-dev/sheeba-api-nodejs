@@ -7,15 +7,26 @@ import { IJobCardRequestForm } from '../models/jobCardManagement/IJobCardRequest
 import { ServiceResponseInterface } from '../models/common/ServiceResponseInterface';
 import { IJobProductionEntryForm } from '../models/jobCardManagement/IJobProductionEntryForm';
 import { IJobCardDispatchInfoForm } from '../models/jobCardManagement/IJobCardDispatchInfoForm';
+import { HandleError } from '../configurations/error';
 
-
-class JobCardController {
-    private jobCardService: JobCardService;
-
+export default class JobCardController {
     constructor() {
         this.jobCardService = new JobCardService();
     }
 
+    private readonly jobCardService: JobCardService;
+
+    public autoComplete = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const { value } = req.query;
+            const result = await this.jobCardService.autoComplete(value);
+            res.status(200).json(result);
+        } catch (error) {
+            HandleError(res, error)
+        }
+    }
+
+    // To be deprecated
     public gerProductsListForJobCardBySearchTermApi = async (req: Request, res: Response): Promise<void> => {
 
 
@@ -52,7 +63,6 @@ class JobCardController {
 
 
     }
-
 
     public createJobCardApi = async (req: Request, res: Response) => {
         try {
@@ -103,7 +113,7 @@ class JobCardController {
             console.error(error);
             res.status(500).json({ message: 'Error processing request', error });
         }
-    };
+    }
 
     public getAllJobCardsListApi = async (req: Request, res: Response): Promise<void> => {
 
@@ -168,8 +178,6 @@ class JobCardController {
 
 
     }
-
-
 
     public gerProductionEntryListBySearchTermApi = async (req: Request, res: Response): Promise<void> => {
 
@@ -247,7 +255,7 @@ class JobCardController {
             console.error(error);
             res.status(500).json({ message: 'Error processing request', error });
         }
-    };
+    }
 
     public getAllJobProductionEntriesApi = async (req: Request, res: Response): Promise<void> => {
 
@@ -281,7 +289,6 @@ class JobCardController {
 
 
     }
-
 
     public insertCardDispatchInfoApi = async (req: Request, res: Response) => {
         try {
@@ -322,8 +329,7 @@ class JobCardController {
             console.error(error);
             res.status(500).json({ message: 'Error processing request', error });
         }
-    };
-
+    }
 
     public getJobDispatchReportDataApi = async (req: Request, res: Response): Promise<void> => {
 
@@ -390,7 +396,6 @@ class JobCardController {
 
     }
 
-
     public getMachineBaseReportApi = async (req: Request, res: Response): Promise<void> => {
         try {
 
@@ -420,7 +425,6 @@ class JobCardController {
 
 
     }
-
 
     public getAllProductsForProductionEntryApi = async (req: Request, res: Response): Promise<void> => {
 
@@ -462,8 +466,3 @@ class JobCardController {
         }
     }
 }
-
-
-
-
-export default JobCardController;

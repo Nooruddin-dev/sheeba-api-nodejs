@@ -4,17 +4,26 @@ import MachinesService from '../services/machines.services';
 import { IMachineRequestForm } from '../models/machines/IMachineRequestForm';
 import { ServiceResponseInterface } from '../models/common/ServiceResponseInterface';
 import { stringIsNullOrWhiteSpace } from '../utils/commonHelpers/ValidationHelper';
+import { HandleError } from '../configurations/error';
 
-
-class MachinesController {
-    private machinesService: MachinesService;
-
+export default class MachinesController {
     constructor() {
         this.machinesService = new MachinesService();
     }
+    
+    private readonly machinesService: MachinesService;
 
+    public autoComplete = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const { value } = req.query;
+            const result = await this.machinesService.autoComplete(value);
+            res.status(200).json(result);
+        } catch (error) {
+            HandleError(res, error)
+        }
+    }
 
-
+    // To be deprecated
     public getMachinesTypes = async (req: Request, res: Response): Promise<void> => {
 
         const { pageNo = 1, pageSize = 10 } = req.query;
@@ -71,7 +80,7 @@ class MachinesController {
                 res.status(200).json({ Response: responseBody });
                 return;
             }
-           
+
 
 
             const busnPartnerIdHeader = getBusnPartnerIdFromApiHeader(req);
@@ -121,7 +130,7 @@ class MachinesController {
                 pageSize: pageSize ?? 10,
                 machine_id: machine_id ? machine_id : 0,
                 machine_name: machine_name || '',
-               
+
             };
 
             console.log('formData', formData);
@@ -140,11 +149,4 @@ class MachinesController {
 
 
     }
-
-
 }
-
-
-
-
-export default MachinesController;
