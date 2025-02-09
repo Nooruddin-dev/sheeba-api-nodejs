@@ -126,6 +126,9 @@ export class ProductionEntryService {
             waste_value: material.wasteWeight,
             tare_core: material.tareWeight,
             net_value: material.netWeight,
+            handle_cutting: material.handleCutting,
+            trimming: material.trimming,
+            rejection: material.rejection,
             created_by: user.id
         };
         const { insertId: productionEntryId } = await DynamicCud.insert('job_production_entries', jobProductionEntryTableValue, connection);
