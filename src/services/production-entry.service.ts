@@ -1,6 +1,6 @@
 import { PoolConnection } from "mysql2/promise";
 import { withConnectionDatabase } from "../configurations/db";
-import { ProductionEntriesTypesEnum, ProductionEntryProductUsageType } from "../models/enum/GlobalEnums";
+import { ProductionEntriesTypesEnum } from "../models/enum/GlobalEnums";
 import { DynamicCud } from "./dynamic-crud.service";
 
 export class ProductionEntryService {

@@ -16,7 +16,7 @@ class SaleInvoiceService {
             const saleInvoice = {
                 jobCardId: param.jobCardId,
                 dispatchId: param.dispatchId,
-                saleInvoiceNo: 'PENDING',
+                saleInvoiceNo: param.invoiceNumber || 'PENDING',
                 date: param.date,
                 official: param.official,
                 notes: param.notes,
@@ -58,14 +58,17 @@ class SaleInvoiceService {
                 await dynamicDataInsertServiceNew('sale_invoice_item', 'id', null, true, saleInvoiceItem, connection);
             }
 
-            const saleInvoiceNo = 'S' + (saleInvoiceId as number).toString().padStart(7, '0');
-            await dynamicDataUpdateServiceWithConnection('sale_invoice', 'id', saleInvoiceId as number, { saleInvoiceNo: saleInvoiceNo }, connection);
+            if (!param.invoiceNumber) {
+                const [result]: any = await connection.query('SELECT COUNT(id) as count FROM sale_invoice WHERE official = 0;');
+                const saleInvoiceNo = 'S' + (parseInt(result[0].count, 10) + 1).toString().padStart(7, '0');
+                await dynamicDataUpdateServiceWithConnection('sale_invoice', 'id', saleInvoiceId as number, { saleInvoiceNo: saleInvoiceNo }, connection);
+            }
 
             await connection.commit();
 
             return {
                 success: true,
-                responseMessage: '',
+                responseMessage: 'Invoice created successfully',
                 primaryKeyValue: saleInvoiceId
             };
         } catch (error) {
