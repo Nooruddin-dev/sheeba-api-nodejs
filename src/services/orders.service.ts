@@ -154,7 +154,7 @@ class OrdersService {
                             }
                             var responseOrderItem = await dynamicDataInsertServiceNew(purchaseOrderItemsTableMainData.tableName, purchaseOrderItemsTableMainData.primaryKeyName,
                                 purchaseOrderItemsTableMainData.primaryKeyValue, purchaseOrderItemsTableMainData.isAutoIncremented, columnsPurchaseOrderItem, connection);
-                            const prodColUpdate = { remaining_weight: (productDetail.data?.remaining_weight ?? 0) + product.weight };
+                            const prodColUpdate = { remaining_weight: parseFloat(productDetail.data?.remaining_weight ?? 0) + parseFloat(product.weight?.toString() ?? 0) };
                             await dynamicDataUpdateServiceWithConnection('products', 'productid', product.product_id, prodColUpdate, connection);
                         }
                     }
