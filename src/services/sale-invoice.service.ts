@@ -45,7 +45,7 @@ class SaleInvoiceService {
                     quantity: lineItem.quantity,
                     subtotal: lineItem.subtotal,
                     discount: lineItem.discount,
-                    salesTax: lineItem.tax,
+                    salesTax: lineItem.salesTax,
                     salesTaxPercentage: lineItem.salesTaxPercentage,
                     advanceTax: lineItem.advanceTax,
                     advanceTaxPercentage: lineItem.advanceTaxPercentage,
