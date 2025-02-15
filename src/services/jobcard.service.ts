@@ -1052,10 +1052,13 @@ export default class JobCardService {
                     d.grand_total as quantity,
                     d.company_name as companyName,
                     jc.job_card_id as jobCardId,
-                    jc.card_rate as rate
+                    jc.card_rate as rate,
+                    dci.dispatch_unit_id as unitId
                 FROM job_card_dispatch_data d
                 INNER JOIN job_cards_master jc
                     ON d.job_card_id = jc.job_card_id
+                LEFT JOIN delivery_challan_items dci
+                    ON dci.card_dispatch_info_id = d.card_dispatch_info_id
                 WHERE d.card_dispatch_no like '%${value}%'
                 LIMIT 10;
             `);

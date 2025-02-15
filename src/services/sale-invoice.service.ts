@@ -149,12 +149,15 @@ class SaleInvoiceService {
                         jc.company_name as companyName,
                         d.card_dispatch_info_id as dispatchId,
                         d.card_dispatch_no as dispatchNo,
-                        d.item_name as itemName
+                        d.item_name as itemName,
+                        dci.dispatch_unit_id as unitId
                     FROM sale_invoice si
                     INNER JOIN job_cards_master jc
                         ON jc.job_card_id = si.jobCardId
                     INNER JOIN job_card_dispatch_data d
                         ON d.card_dispatch_info_id = si.dispatchId
+                    LEFT JOIN delivery_challan_items dci
+                        ON dci.card_dispatch_info_id = d.card_dispatch_info_id
                     WHERE si.id = ?;
                 `, id);
 
@@ -162,11 +165,12 @@ class SaleInvoiceService {
                 if (invoice.length) {
                     const [lineItems] = await connection.query(`
                     SELECT
-                        sii.*
+                        sii.*,
+                        ${invoice[0].unitId} as unitId
                     FROM sale_invoice_item sii
                     WHERE sii.saleInvoiceId = ?;
                 `, id);
-
+                    delete invoice[0].unitId;
                     return {
                         ...invoice[0],
                         lineItems
@@ -182,7 +186,4 @@ class SaleInvoiceService {
 }
 
 export default SaleInvoiceService;
-function uuidv4() {
-    throw new Error('Function not implemented.');
-}
 
