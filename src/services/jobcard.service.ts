@@ -75,7 +75,7 @@ export default class JobCardService {
                 JOIN job_cards_master jcm 
                 ON
                     jcm.job_card_id = jpe.job_card_id
-                JOIN products p 
+                LEFT JOIN products p 
                 ON
                     p.productid = jpe.job_card_product_id
                 JOIN machines m 
