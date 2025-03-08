@@ -4,6 +4,7 @@ import { ServiceResponseInterface } from '../models/common/ServiceResponseInterf
 import { IMachineRequestForm } from '../models/machines/IMachineRequestForm';
 import { dynamicDataInsertService, dynamicDataUpdateService } from './dynamic.service';
 import { stringIsNullOrWhiteSpace } from '../utils/commonHelpers/ValidationHelper';
+import { BusinessError } from '../configurations/error';
 
 export default class MachinesService {
     public async autoComplete(value: any): Promise<any> {
@@ -33,6 +34,71 @@ export default class MachinesService {
         });
     }
 
+    public async getMachineSummary(filter: any): Promise<any> {
+        if (!filter?.startDate) {
+            throw new BusinessError(400, 'Start date is required');
+        }
+
+        if (!filter?.endDate) {
+            throw new BusinessError(400, 'Start date is required');
+        }
+
+        const entries = await withConnectionDatabase(async (connection) => {
+            try {
+                const [result]: any = await connection.query(`
+                    SELECT
+                        m.machine_id as machineId,
+                        m.machine_name as machineName,
+                        mt.machine_type_id as machineTypeId,
+                        mt.machine_type_name as machineTypeName,
+                        SUM(jpe.waste_value) as waste,
+                        SUM(jpe.gross_value) as gross,
+                        SUM(jpe.net_value) as net,
+                        SUM(jpe.trimming) as trimming,
+                        SUM(jpe.rejection) as rejection,
+                        SUM(jpe.handle_cutting) as handleCutting
+                    FROM
+                        job_production_entries jpe
+                    JOIN job_cards_master jcm 
+                    ON
+                        jcm.job_card_id = jpe.job_card_id
+                    JOIN machines m 
+                    ON
+                        m.machine_id = jpe.machine_id
+                    JOIN machine_types mt  
+                    ON
+                        mt.machine_type_id = m.machine_type_id
+                    WHERE
+                        jpe.created_on BETWEEN ? AND ?
+                        AND (jpe.job_card_product_id IS NULL
+                            OR jpe.job_card_product_id = jcm.extruder_product_id)
+                    GROUP BY
+                        m.machine_id;
+                `, [filter.startDate, filter.endDate]);
+
+                return result;
+            } finally {
+                connection.release();
+            }
+        });
+
+        const data: any[] = [];
+        entries.forEach((entry: any) => {
+            const found = data.find((d) => d.machineTypeId === entry.machineTypeId);
+            if (found) {
+                found.machines.push(entry);
+            } else {
+                data.push({
+                    machineTypeId: entry.machineTypeId,
+                    machineTypeName: entry.machineTypeName,
+                    machines: [entry],
+                });
+            }
+        });
+
+        return data;
+    }
+
     // To be deprecated
     public async getMachinesTypesService(FormData: any): Promise<any> {
 
@@ -51,8 +117,6 @@ export default class MachinesService {
             return results;
 
         });
-
-
     }
 
     public async insertUpdateMachineService(formData: IMachineRequestForm): Promise<ServiceResponseInterface> {

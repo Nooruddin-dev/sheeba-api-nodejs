@@ -10,6 +10,7 @@ import { ProductionEntriesTypesEnum, ProductSourceEnum } from '../models/enum/Gl
 import { getProductQuantityFromLedger, getProductWeightValueFromLedger, getWeightAndQtyFromLedger } from './common.service';
 import { IJobCardDispatchInfoForm } from '../models/jobCardManagement/IJobCardDispatchInfoForm';
 import InventoryService from './inventory.service';
+import { BusinessError } from '../configurations/error';
 
 export default class JobCardService {
 
@@ -42,6 +43,100 @@ export default class JobCardService {
                 connection.release();
             }
         });
+    }
+
+    public async getJobSummaryReport(filter: any): Promise<any> {
+        if (!filter?.jobCardNo) {
+            throw new BusinessError(400, 'Job Card No is required');
+        }
+
+        const data: { machines: any[], dispatches: any[] } = { machines: [], dispatches: [] };
+
+        const result = await withConnectionDatabase(async (connection) => {
+            try {
+                const [jpeResult]: any = await connection.query(`
+                SELECT
+                    m.machine_id as machineId,
+                    m.machine_name as machineName,
+                    mt.machine_type_id as machineTypeId,
+                    mt.machine_type_name as machineTypeName,
+                    p.productid as productId,
+                    p.product_name as productName,
+                    jpe.waste_value as waste,
+                    jpe.gross_value as gross,
+                    jpe.created_on as date,
+                    jpe.net_value as net,
+                    jpe.tare_core as tare,
+                    jpe.trimming as trimming,
+                    jpe.rejection as trimming,
+                    jpe.handle_cutting as handleCutting
+                FROM
+                    job_production_entries jpe
+                JOIN job_cards_master jcm 
+                ON
+                    jcm.job_card_id = jpe.job_card_id
+                JOIN products p 
+                ON
+                    p.productid = jpe.job_card_product_id
+                JOIN machines m 
+                ON
+                    m.machine_id = jpe.machine_id
+                JOIN machine_types mt  
+                ON
+                    mt.machine_type_id = m.machine_type_id
+                WHERE
+                    jcm.job_card_no = ?
+                    AND (jpe.job_card_product_id IS NULL
+                        OR jpe.job_card_product_id = jcm.extruder_product_id);
+                `, filter.jobCardNo);
+
+                const [dciResult]: any = await connection.query(`
+                    SELECT 
+                        jcdd.card_dispatch_info_id as id,
+                        jcdd.created_on as date,
+                        dci.quantity,
+                        dci.dispatch_unit_id as unitId,
+                        dci.tare_value as core,
+                        dci.total_value as gross,
+                        dci.net_weight as net
+                    FROM 
+                        delivery_challan_items dci
+                    JOIN job_card_dispatch_data jcdd 
+                    ON
+                        jcdd.card_dispatch_info_id = dci.card_dispatch_info_id
+                    JOIN job_cards_master jcm 
+                    ON
+                        jcm.job_card_id = jcdd.job_card_id
+                    WHERE
+                        jcm.job_card_no = ?;
+                    `, filter.jobCardNo);
+                return {
+                    machines: jpeResult,
+                    dispatches: dciResult
+                }
+            } finally {
+                connection.release();
+            }
+        });
+
+        result.machines.forEach((entry: any) => {
+            const found = data.machines.find((r) => r.machineTypeId === entry.machineTypeId);
+            if (found) {
+                found.entries.push(entry);
+            } else {
+                data.machines.push({
+                    machineId: entry.machineId,
+                    machineName: entry.machineName,
+                    machineTypeId: entry.machineTypeId,
+                    machineTypeName: entry.machineTypeName,
+                    entries: [entry],
+                });
+            }
+        });
+
+        data.dispatches = result.dispatches;
+
+        return data;
     }
 
     // To be deprecated

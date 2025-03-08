@@ -413,6 +413,51 @@ class InventoryService {
         await DynamicCud.update('products', inventoryLedgerResult[0].productId, 'productid', productTableValue, connection);
     }
 
+    public async getStockReport(filter: any) {
+        return withConnectionDatabase(async (connection) => {
+            const whereClauses: string[] = [];
+                const params: any[] = [];
+
+                if (filter.source) {
+                    whereClauses.push('p.source = ?');
+                    params.push(filter.source);
+                }
+
+                if (filter.type) {
+                    whereClauses.push('p.unit_type = ?');
+                    params.push(filter.type);
+                }
+            try {
+                const [results]: any = await connection.query(`
+                    SELECT 
+                        p.productid AS id,
+                        p.product_name AS name,
+                        p.sku,
+                        p.stockquantity AS quantity,
+                        p.weight_value AS weight,
+                        p.weight_unit_id AS weightUnitId,
+                        p.unit_type AS type,
+                        p.source,
+                        wi.unit_value AS width,
+                        wi.unit_id AS widthUnitId,
+                        mi.unit_value AS micron
+                    FROM
+                        products p
+                    LEFT JOIN
+                        inventory_units_info wi 
+                        ON p.productid = wi.productid AND wi.unit_sub_type = 'Width'
+                    LEFT JOIN
+                        inventory_units_info mi 
+                        ON p.productid = mi.productid AND mi.unit_sub_type IN ('Micron', 'Micon')
+                    ${whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : ''}
+                `, );
+                return results
+            } finally {
+                connection.release();
+            }
+        });
+    }
+
     // To be deprecated
     public async insertUpdateProductService(formData: IProductRequestForm): Promise<ServiceResponseInterface> {
 

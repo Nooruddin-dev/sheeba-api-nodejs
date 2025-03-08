@@ -9,6 +9,7 @@ import voucherRoutes from './routes/voucher.routes';
 import jobCardRoutes from './routes/jobcard.routes';
 import saleInvoiceRoutes from './routes/sale-invoice.routes';
 import productionEntryRouter from './routes/production-entry.routes';
+import reportsReport from './routes/reports.route';
 
 const cors = require('cors');
 
@@ -36,6 +37,7 @@ app.use(`/api/${api_version}/machines`, machinesRoutes);
 app.use(`/api/${api_version}/orders`, ordersRoutes);
 app.use(`/api/${api_version}/voucher`, voucherRoutes);
 app.use(`/api/${api_version}/jobcard`, jobCardRoutes);
+app.use(`/api/${api_version}/reports`, reportsReport);
 
 
 app.use(`/api/${api_version}/production-entries`, productionEntryRouter);
