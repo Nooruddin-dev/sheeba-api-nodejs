@@ -450,7 +450,7 @@ class InventoryService {
                         inventory_units_info mi 
                         ON p.productid = mi.productid AND mi.unit_sub_type IN ('Micron', 'Micon')
                     ${whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : ''}
-                `, );
+                `, params);
                 return results
             } finally {
                 connection.release();

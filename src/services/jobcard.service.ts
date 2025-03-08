@@ -36,7 +36,7 @@ export default class JobCardService {
                     WHERE
                         jc.job_card_no LIKE ?
                     LIMIT 10;
-                `, `${value}%`);
+                `, `%${value}%`);
                 const finalData: any = results;
                 return finalData;
             } finally {
