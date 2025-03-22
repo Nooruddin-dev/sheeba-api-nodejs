@@ -60,18 +60,25 @@ export default class MachinesService {
                     FROM
                         job_production_entries jpe
                     JOIN job_cards_master jcm 
-                    ON
+                                        ON
                         jcm.job_card_id = jpe.job_card_id
                     JOIN machines m 
-                    ON
+                                        ON
                         m.machine_id = jpe.machine_id
                     JOIN machine_types mt  
-                    ON
+                                        ON
                         mt.machine_type_id = m.machine_type_id
                     WHERE
                         jpe.created_on BETWEEN ? AND ?
                         AND (jpe.job_card_product_id IS NULL
-                            OR jpe.job_card_product_id = jcm.extruder_product_id)
+                            OR jpe.job_card_product_id IN (
+                            SELECT
+                                productid
+                            FROM
+                                products p
+                            WHERE
+                                p.unit_type = 3
+                            ))
                     GROUP BY
                         m.machine_id;
                 `, [filter.startDate, filter.endDate]);

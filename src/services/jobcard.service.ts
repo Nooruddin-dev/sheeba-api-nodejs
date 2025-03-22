@@ -73,21 +73,28 @@ export default class JobCardService {
                 FROM
                     job_production_entries jpe
                 JOIN job_cards_master jcm 
-                ON
+                                ON
                     jcm.job_card_id = jpe.job_card_id
                 LEFT JOIN products p 
-                ON
+                                ON
                     p.productid = jpe.job_card_product_id
                 JOIN machines m 
-                ON
+                                ON
                     m.machine_id = jpe.machine_id
                 JOIN machine_types mt  
-                ON
+                                ON
                     mt.machine_type_id = m.machine_type_id
                 WHERE
                     jcm.job_card_no = ?
                     AND (jpe.job_card_product_id IS NULL
-                        OR jpe.job_card_product_id = jcm.extruder_product_id);
+                        OR jpe.job_card_product_id IN (
+                        SELECT
+                            productid
+                        FROM
+                            products p
+                        WHERE
+                            p.unit_type = 3
+                        ))
                 `, filter.jobCardNo);
 
                 const [dciResult]: any = await connection.query(`
