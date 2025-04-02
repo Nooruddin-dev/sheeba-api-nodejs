@@ -352,6 +352,7 @@ export default class JobCardService {
 
                     created_on: new Date(),
                     created_by: formData.createByUserId,
+                    official: formData.official,
                 };
 
 

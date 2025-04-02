@@ -42,4 +42,5 @@ export interface IJobCardRequestForm {
     produce_product_micron: number;
 
     createByUserId?: number;
+    official?: boolean;
 }

@@ -9,6 +9,7 @@ router.get('/get_user_by_id/:id', userController.getUserById);
 
 // Route to get a user by ID
 router.get('/get-all-business-partners', userController.getAllBusinessPartners);
+router.get('/auto-complete', userController.autoComplete);
 
 router.post('/get_login_user', userController.getUserLogin);
 router.post('/insert-update-business-partner', userController.insertUpdateBusinessPartner);

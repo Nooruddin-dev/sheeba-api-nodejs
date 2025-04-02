@@ -5,12 +5,12 @@ import InventoryService from './inventory.service';
 import { IPurchaseOrderRequestForm } from '../models/orders/IPurchaseOrderRequestForm';
 import { connectionPool, withConnectionDatabase } from '../configurations/db';
 import { stringIsNullOrWhiteSpace } from '../utils/commonHelpers/ValidationHelper';
-import { calculateItemAmount } from '../utils/commonHelpers/OrderHelper';
 import { PurchaseOrderStatusTypesEnum } from '../models/enum/GlobalEnums';
 import { IPurchaseOrderStatusUpdateRequestForm } from '../models/orders/IPurchaseOrderStatusUpdateRequestForm';
 import { sendEmailFunc } from './EmailService';
 import { ROOT_EMAIL, WEB_APP_URL } from '../configurations/config';
 import { v4 as uuidv4 } from 'uuid';
+import { BusinessError } from '../configurations/error';
 
 
 class OrdersService {
@@ -19,6 +19,56 @@ class OrdersService {
 
     constructor() {
         this.inventoryService = new InventoryService();
+    }
+
+    public async getGrnReport(filter: any): Promise<any> {
+        if (!filter?.startDate) {
+            throw new BusinessError(400, 'Start date is required');
+        }
+
+        if (!filter?.endDate) {
+            throw new BusinessError(400, 'End date is required');
+        }
+
+        const whereClauses: string[] = [];
+        const params: any[] = [];
+        if (filter?.sku) {
+            whereClauses.push('gvli.product_sku_code = ?');
+            params.push(filter.sku);
+        }
+
+        const entries = await withConnectionDatabase(async (connection) => {
+            try {
+                const [result]: any = await connection.query(`
+                        SELECT
+                            gv.voucher_id as id,
+                            gv.voucher_number as grnNumber,
+                            gv.grn_date as grnDate,
+                            gv.po_number as poNumber,
+                            gvli.product_id as productId,
+                            gvli.product_sku_code as productSku,
+                            gvli.product_name as productName,
+                            gvli.quantity,
+                            gvli.weight 
+                        FROM
+                            grn_voucher gv
+                        JOIN 
+                            grn_voucher_line_items gvli
+                            ON gvli.voucher_id = gv.voucher_id
+                        WHERE 
+                            gv.grn_date BETWEEN ? AND ?
+                            ${whereClauses.length ? 'AND ' + whereClauses.join(' AND ') : ''}
+                        ORDER BY
+                            gv.grn_date DESC
+                    `, [filter.startDate, filter.endDate, ...params]);
+
+                return result;
+            } finally {
+                connection.release();
+            }
+        });
+
+        return entries;
     }
 
 

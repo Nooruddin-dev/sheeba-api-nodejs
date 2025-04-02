@@ -3,6 +3,7 @@ import InventoryService from '../services/inventory.service';
 import { HandleError } from '../configurations/error';
 import JobCardService from '../services/jobcard.service';
 import MachinesService from '../services/machines.services';
+import OrdersService from '../services/orders.service';
 
 
 export default class ReportsController {
@@ -10,11 +11,13 @@ export default class ReportsController {
         this.inventoryService = new InventoryService();
         this.jobCardService = new JobCardService();
         this.machineService = new MachinesService();
+        this.orderService = new OrdersService();
     }
 
     private readonly inventoryService: InventoryService;
     private readonly jobCardService: JobCardService;
     private readonly machineService: MachinesService;
+    private readonly orderService: OrdersService;
 
     public getStockReport = async (req: Request, res: Response): Promise<void> => {
         try {
@@ -39,6 +42,16 @@ export default class ReportsController {
     public getMachineSummary = async (req: Request, res: Response): Promise<void> => {
         try {
             const data = await this.machineService.getMachineSummary(req.query)
+            res.status(200).json(data);
+        }
+        catch (error) {
+            HandleError(res, error);
+        }
+    }
+
+    public getGrn = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const data = await this.orderService.getGrnReport(req.query)
             res.status(200).json(data);
         }
         catch (error) {

@@ -15,4 +15,6 @@ export interface IBusnPartnerRequestForm {
     createByUserId?: number;
     
     saleRepresentativeVendorId?: number;
+    stn?: string;
+    ntn?: string;
 }

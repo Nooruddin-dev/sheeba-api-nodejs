@@ -9,6 +9,56 @@ import { ServiceResponseInterface } from '../models/common/ServiceResponseInterf
 
 class UserService {
 
+  public async autoComplete(filter: any): Promise<any> {
+    return withConnectionDatabase(async (connection) => {
+      try {
+        const whereClauses: string[] = [];
+        const params: any[] = [];
+
+        if (filter.typeId) {
+          whereClauses.push('b.BusnPartnerTypeId = ?');
+          params.push(filter.typeId);
+        }
+
+        if (filter.name) {
+          whereClauses.push('(b.FirstName LIKE ? OR b.LastName LIKE ?)');
+          params.push(`%${filter.name}%`);
+          params.push(`%${filter.name}%`);
+        }
+
+        const query = `
+                SELECT
+                   b.BusnPartnerId as id,
+                   b.BusnPartnerTypeId as typeId,
+                   b.FirstName as firstName,
+                   b.LastName as lastName,
+                   b.EmailAddress as emailAddress,
+                   b.ntn as ntn,
+                   b.stn as stn,
+                   bpp.PhoneNo as phoneNo,
+                   bpa.AddressOne as address
+                FROM 
+                    busnpartner b
+                LEFT JOIN
+                    busnpartneraddressassociation bpa
+                    ON b.BusnPartnerId = bpa.BusnPartnerId
+                LEFT JOIN
+                    busnpartnerphoneassociation bpp
+                    ON b.BusnPartnerId = bpp.BusnPartnerId
+                ${whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : ''}
+                LIMIT 10;
+            `;
+        console.log('query', query);
+        const [results]: any = await connection.query(query, params);
+
+
+        const finalData: any = results;
+        return finalData;
+      } finally {
+        connection.release();
+      }
+    });
+  }
 
   public async getUser(userId: string): Promise<any> {
 
@@ -170,7 +220,7 @@ console.log( 'Password' ,Password);
 
     try {
 
-      const [rows, fields]: any = await connection.execute(`CALL SP_CreateUpdateBusnPartner(${formData.busnPartnerId}, ${formData.busnPartnerTypeId}, '${formData.firstName}', '${formData.lastName}', '${formData.emailAddress}', ${formData.isActive}, ${formData.countryId}, '${formData.addressOne}', '${formData.phoneNo}', '${formData.password}', ${formData.profilePictureId}, ${formData.createByUserId}, ${formData.saleRepresentativeVendorId ?? 0}, '${formData.role_type}')`
+      const [rows, fields]: any = await connection.execute(`CALL SP_CreateUpdateBusnPartner(${formData.busnPartnerId}, ${formData.busnPartnerTypeId}, '${formData.firstName}', '${formData.lastName}', '${formData.emailAddress}', ${formData.isActive}, ${formData.countryId}, '${formData.addressOne}', '${formData.phoneNo}', '${formData.password}', ${formData.profilePictureId}, ${formData.createByUserId}, ${formData.saleRepresentativeVendorId ?? 0}, '${formData.role_type}', '${formData.ntn}', '${formData.stn}')`
 
       );
 

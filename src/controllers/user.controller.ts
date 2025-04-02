@@ -7,6 +7,7 @@ import { IBusnPartnerRequestForm } from '../models/usersManagement/Forms/IBusnPa
 import { BusinessPartnerTypesEnum } from '../models/enum/GlobalEnums';
 import { IDeleteRecordRequestForm } from '../models/usersManagement/Forms/IDeleteRecordRequestForm';
 import { dynamicDataDeleteService } from '../services/dynamic.service';
+import { HandleError } from '../configurations/error';
 
 
 class UserController {
@@ -14,6 +15,17 @@ class UserController {
 
   constructor() {
     this.userService = new UserService();
+  }
+
+  public autoComplete = async (req: Request, res: Response): Promise<void> => {
+      try {
+          console.log('autoComplete', req.query);;
+          const data = await this.userService.autoComplete(req.query);
+          res.status(200).json(data);
+      }
+      catch (error) {
+          HandleError(res, error);
+      }
   }
 
 
@@ -245,7 +257,6 @@ class UserController {
       res.status(500).json({ message: 'Error processing request', error });
     }
   };
-
 
 }
 
