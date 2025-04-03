@@ -1166,7 +1166,8 @@ export default class JobCardService {
                     d.company_name as companyName,
                     jc.job_card_id as jobCardId,
                     jc.card_rate as rate,
-                    dci.dispatch_unit_id as unitId
+                    dci.dispatch_unit_id as unitId,
+                    jc.official as official
                 FROM job_card_dispatch_data d
                 INNER JOIN job_cards_master jc
                     ON d.job_card_id = jc.job_card_id
