@@ -45,16 +45,20 @@ class OrdersService {
                             gv.voucher_number as grnNumber,
                             gv.grn_date as grnDate,
                             gv.po_number as poNumber,
+                            po.company_name as companyName,
                             gvli.product_id as productId,
                             gvli.product_sku_code as productSku,
                             gvli.product_name as productName,
                             gvli.quantity,
-                            gvli.weight 
+                            gvli.weight
                         FROM
                             grn_voucher gv
                         JOIN 
                             grn_voucher_line_items gvli
                             ON gvli.voucher_id = gv.voucher_id
+                        JOIN 
+                            purchase_orders po
+                            ON po.purchase_order_id = gv.purchase_order_id
                         WHERE 
                             gv.grn_date BETWEEN ? AND ?
                             ${whereClauses.length ? 'AND ' + whereClauses.join(' AND ') : ''}
