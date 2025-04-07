@@ -104,8 +104,8 @@ export default class JobCardService {
                         dci.quantity,
                         dci.dispatch_unit_id as unitId,
                         dci.tare_value as core,
-                        dci.total_value as gross,
-                        dci.net_weight as net
+                        dci.total_value as net,
+                        dci.net_weight as gross
                     FROM 
                         delivery_challan_items dci
                     JOIN job_card_dispatch_data jcdd 
