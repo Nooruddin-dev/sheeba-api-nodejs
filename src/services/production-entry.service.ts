@@ -141,7 +141,7 @@ export class ProductionEntryService {
                 foreign_key_name: 'production_entry_id',
                 foreign_key_value: productionEntryId,
                 quantity: parseFloat(isProduced ? material.quantity : (material.quantity * -1)),
-                weight_quantity_value: parseFloat(isProduced ? material.weightWithoutTare : (material.weightWithoutTare * -1)),
+                weight_quantity_value: parseFloat(isProduced ? material.netWeight : (material.weightWithoutTare * -1)),
                 action_type: ProductionEntriesTypesEnum.NewProductionEntry,
                 created_at: new Date()
             }
