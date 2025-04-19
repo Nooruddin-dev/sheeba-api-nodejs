@@ -68,7 +68,7 @@ export default class JobCardService {
                     jpe.net_value as net,
                     jpe.tare_core as tare,
                     jpe.trimming as trimming,
-                    jpe.rejection as trimming,
+                    jpe.rejection as rejection,
                     jpe.handle_cutting as handleCutting
                 FROM
                     job_production_entries jpe
@@ -142,6 +142,66 @@ export default class JobCardService {
         });
 
         data.dispatches = result.dispatches;
+
+        return data;
+    }
+
+    public async getDispatchReport(filter: any): Promise<any> {
+        if (!filter?.startDate) {
+            throw new BusinessError(400, 'Start date is required');
+        }
+
+        if (!filter?.endDate) {
+            throw new BusinessError(400, 'End date is required');
+        }
+
+        const whereClauses: string[] = [];
+        const params: any[] = [];
+        if (filter?.official) {
+            whereClauses.push('jcdd.show_company_detail = ?');
+            params.push(filter.official === 'true' ? 1 : 0);
+        }
+
+        const data = await withConnectionDatabase(async (connection) => {
+            try {
+                const [result]: any = await connection.query(`
+                        SELECT
+                            jcdd.created_on as dispatchDate,
+                            jcm.created_on as jobCardDate,
+                            jcdd.card_dispatch_no as dispatchNo,
+                            jcm.job_card_no as jobCardNo,
+                            jcdd.item_name as product,
+                            dci.quantity,
+                            dci.total_value as weight,
+                            dci.dispatch_unit_id as unit
+                        FROM
+                            job_card_dispatch_data jcdd
+                        JOIN delivery_challan_items dci ON
+                            dci.card_dispatch_info_id = jcdd.card_dispatch_info_id
+                        JOIN job_cards_master jcm ON
+                            jcm.job_card_id = jcdd.job_card_id
+                        WHERE 
+                            jcdd.created_on BETWEEN ? AND ?
+                            ${whereClauses.length ? 'AND ' + whereClauses.join(' AND ') : ''}
+                        ORDER BY
+                            jcdd.created_on ASC
+                    `, [filter.startDate, filter.endDate, ...params]);
+
+                return {
+                    entries: result,
+                    summary: result.reduce((acc: { totalQuantity: number; totalWeight: number }, entry: any) => {
+                        if (entry.unit === 1) {
+                            acc.totalQuantity += parseFloat(entry.quantity || 0);
+                        } else {
+                            acc.totalWeight += parseFloat(entry.weight || 0);
+                        }
+                        return acc;
+                    }, { totalQuantity: 0, totalWeight: 0 })
+                };
+            } finally {
+                connection.release();
+            }
+        });
 
         return data;
     }

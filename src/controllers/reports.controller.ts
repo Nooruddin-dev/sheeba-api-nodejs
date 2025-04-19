@@ -58,4 +58,14 @@ export default class ReportsController {
             HandleError(res, error);
         }
     }
+
+    public getDispatch = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const data = await this.jobCardService.getDispatchReport(req.query)
+            res.status(200).json(data);
+        }
+        catch (error) {
+            HandleError(res, error);
+        }
+    }
 }

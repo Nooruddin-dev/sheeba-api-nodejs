@@ -112,6 +112,7 @@ class SaleInvoiceService {
                     INNER JOIN job_card_dispatch_data d
                         ON d.card_dispatch_info_id = si.dispatchId
                     ${conditions.length ? 'WHERE ' + conditions.join(' AND ') : ''}
+                    ORDER BY si.id DESC
                     LIMIT 10 OFFSET ${offset};`;
             const countQuery = `
                     SELECT
