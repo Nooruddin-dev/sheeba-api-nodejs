@@ -171,8 +171,9 @@ export default class JobCardService {
                             jcdd.card_dispatch_no as dispatchNo,
                             jcm.job_card_no as jobCardNo,
                             jcdd.item_name as product,
-                            dci.quantity,
-                            dci.total_value as weight,
+                            CASE WHEN dci.dispatch_unit_id = 1 THEN dci.total_value ELSE 0 END as quantity,
+                            CASE WHEN dci.dispatch_unit_id = 2 THEN dci.total_value ELSE 0 END as weight,
+                            dci.total_value as total,
                             dci.dispatch_unit_id as unit
                         FROM
                             job_card_dispatch_data jcdd
@@ -191,9 +192,9 @@ export default class JobCardService {
                     entries: result,
                     summary: result.reduce((acc: { totalQuantity: number; totalWeight: number }, entry: any) => {
                         if (entry.unit === 1) {
-                            acc.totalQuantity += parseFloat(entry.quantity || 0);
+                            acc.totalQuantity += parseFloat(entry.total || 0);
                         } else {
-                            acc.totalWeight += parseFloat(entry.weight || 0);
+                            acc.totalWeight += parseFloat(entry.total || 0);
                         }
                         return acc;
                     }, { totalQuantity: 0, totalWeight: 0 })
