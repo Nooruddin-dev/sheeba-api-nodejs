@@ -11,6 +11,7 @@ import { getProductQuantityFromLedger, getProductWeightValueFromLedger, getWeigh
 import { IJobCardDispatchInfoForm } from '../models/jobCardManagement/IJobCardDispatchInfoForm';
 import InventoryService from './inventory.service';
 import { BusinessError } from '../configurations/error';
+import { DynamicCud } from './dynamic-crud.service';
 
 export default class JobCardService {
 
@@ -62,6 +63,7 @@ export default class JobCardService {
                     mt.machine_type_name as machineTypeName,
                     p.productid as productId,
                     p.product_name as productName,
+                    ABS(il.quantity) as quantity,
                     jpe.waste_value as waste,
                     jpe.gross_value as gross,
                     jpe.created_on as date,
@@ -78,6 +80,9 @@ export default class JobCardService {
                 LEFT JOIN products p 
                                 ON
                     p.productid = jpe.job_card_product_id
+                LEFT JOIN inventory_ledger il 
+                                ON
+                    il.foreign_key_value = jpe.production_entry_id
                 JOIN machines m 
                                 ON
                     m.machine_id = jpe.machine_id
@@ -1019,6 +1024,11 @@ export default class JobCardService {
                 }
 
             }
+
+            const jobCardMasterTableValue = {
+                job_status: 'Dispatched',
+            }
+            await DynamicCud.update('job_cards_master', formData.job_card_id, 'job_card_id', jobCardMasterTableValue, connection);
 
             //--Commit the transaction if all inserts/updates are successful
             await connection.commit();
