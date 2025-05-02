@@ -982,11 +982,11 @@ export default class JobCardService {
                 let card_dispatch_no = 'DN';;
                 if (formData.show_company_detail == true) {
                     const [taxChallanResult]: any = await connection.query(`SELECT COUNT(show_company_detail) as count FROM job_card_dispatch_data WHERE show_company_detail = 1`);
-                    const nextNumber = parseInt(taxChallanResult[0].count ?? 0, 10) + 1;
+                    const nextNumber = parseInt(taxChallanResult[0].count ?? 0, 10) + 3; 
                     card_dispatch_no = 'CH' + nextNumber.toString().padStart(7, '0');
                 } else {
                     const [nonTaxChallanResult]: any = await connection.query(`SELECT COUNT(show_company_detail) as count FROM job_card_dispatch_data WHERE show_company_detail = 0`);
-                    const nextNumber = parseInt(nonTaxChallanResult[0].count ?? 0, 10) + 95; // because old logic was based on PK
+                    const nextNumber = parseInt(nonTaxChallanResult[0].count ?? 0, 10) + 97; // because old logic was based on PK
                     card_dispatch_no = 'DN' + nextNumber.toString().padStart(7, '0');
                 }
 
