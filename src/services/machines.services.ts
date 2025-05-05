@@ -51,7 +51,7 @@ export default class MachinesService {
                         m.machine_name as machineName,
                         mt.machine_type_id as machineTypeId,
                         mt.machine_type_name as machineTypeName,
-                        SUM(ABS(il.quantity)) as quantity,
+                        SUM(jpe.weight_value) as quantity,
                         SUM(jpe.waste_value) as waste,
                         SUM(jpe.gross_value) as gross,
                         SUM(jpe.net_value) as net,
@@ -69,9 +69,6 @@ export default class MachinesService {
                     JOIN machine_types mt  
                                         ON
                         mt.machine_type_id = m.machine_type_id
-                    LEFT JOIN inventory_ledger il 
-                                        ON
-                    il.foreign_key_value = jpe.production_entry_id
                     WHERE
                         jpe.created_on BETWEEN ? AND ?
                         AND (jpe.job_card_product_id IS NULL

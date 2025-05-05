@@ -63,7 +63,7 @@ export default class JobCardService {
                     mt.machine_type_name as machineTypeName,
                     p.productid as productId,
                     p.product_name as productName,
-                    ABS(il.quantity) as quantity,
+                    jpe.weight_value as quantity,
                     jpe.waste_value as waste,
                     jpe.gross_value as gross,
                     jpe.created_on as date,
@@ -80,9 +80,6 @@ export default class JobCardService {
                 LEFT JOIN products p 
                                 ON
                     p.productid = jpe.job_card_product_id
-                LEFT JOIN inventory_ledger il 
-                                ON
-                    il.foreign_key_value = jpe.production_entry_id
                 JOIN machines m 
                                 ON
                     m.machine_id = jpe.machine_id
