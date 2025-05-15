@@ -5,7 +5,7 @@ import InventoryService from './inventory.service';
 import { IPurchaseOrderRequestForm } from '../models/orders/IPurchaseOrderRequestForm';
 import { connectionPool, withConnectionDatabase } from '../configurations/db';
 import { stringIsNullOrWhiteSpace } from '../utils/commonHelpers/ValidationHelper';
-import { PurchaseOrderStatusTypesEnum } from '../models/enum/GlobalEnums';
+import { GrnVoucherStatus, PurchaseOrderStatusTypesEnum } from '../models/enum/GlobalEnums';
 import { IPurchaseOrderStatusUpdateRequestForm } from '../models/orders/IPurchaseOrderStatusUpdateRequestForm';
 import { sendEmailFunc } from './EmailService';
 import { ROOT_EMAIL, WEB_APP_URL } from '../configurations/config';
@@ -60,11 +60,12 @@ class OrdersService {
                             purchase_orders po
                             ON po.purchase_order_id = gv.purchase_order_id
                         WHERE 
-                            gv.grn_date BETWEEN ? AND ?
+                            gv.status = ?
+                            AND gv.grn_date BETWEEN ? AND ?
                             ${whereClauses.length ? 'AND ' + whereClauses.join(' AND ') : ''}
                         ORDER BY
                             gv.grn_date DESC
-                    `, [filter.startDate, filter.endDate, ...params]);
+                    `, [GrnVoucherStatus.Issued, filter.startDate, filter.endDate, ...params]);
 
                 return result;
             } finally {

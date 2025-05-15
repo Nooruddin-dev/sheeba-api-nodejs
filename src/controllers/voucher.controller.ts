@@ -4,16 +4,31 @@ import { stringIsNullOrWhiteSpace } from '../utils/commonHelpers/ValidationHelpe
 import { getBusnPartnerIdFromApiHeader } from '../utils/authHelpers/AuthMainHelper';
 import { ServiceResponseInterface } from '../models/common/ServiceResponseInterface';
 import { IGrnVoucherCreateRequestForm } from '../models/voucher/IGrnVoucherCreateRequestForm';
-
-
-
+import { HandleError } from '../configurations/error';
 class VoucherController {
-
-    private voucherService: VoucherServices;
-
+    private readonly voucherService: VoucherServices;
 
     constructor() {
         this.voucherService = new VoucherServices();
+    }
+    public getVouchers = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const result = await this.voucherService.getByFilter(req.query);
+            res.status(200).json(result);
+        }
+        catch (error) {
+            HandleError(res, error);
+        }
+    }
+
+    public cancelGrn = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const data = await this.voucherService.cancelGrn(req.params)
+            res.status(200).json(data);
+        }
+        catch (error) {
+            HandleError(res, error);
+        }
     }
 
     public getPurchaseOrderDetailsForGrnVoucher = async (req: Request, res: Response): Promise<void> => {
@@ -33,7 +48,7 @@ class VoucherController {
             const busnPartnerIdHeader = getBusnPartnerIdFromApiHeader(req);
 
 
-            const result =  await this.voucherService.getPurchaseOrderDetailsForGrnVoucherApi(purchase_order_id);
+            const result = await this.voucherService.getPurchaseOrderDetailsForGrnVoucherApi(purchase_order_id);
 
             if (!result) {
                 res.status(404).json({ message: 'Not Found' });

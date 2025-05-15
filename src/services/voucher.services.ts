@@ -6,12 +6,135 @@ import { IGrnVoucherCreateRequestForm } from '../models/voucher/IGrnVoucherCreat
 import { ServiceResponseInterface } from '../models/common/ServiceResponseInterface';
 import { dynamicDataGetByAnyColumnService, dynamicDataGetService, dynamicDataGetServiceWithConnection, dynamicDataInsertService, dynamicDataInsertServiceNew, dynamicDataUpdateService, dynamicDataUpdateServiceWithConnection } from './dynamic.service';
 import OrdersService from './orders.service';
-import { ProductionEntriesTypesEnum, PurchaseOrderStatusTypesEnum, UnitTypesEnum } from '../models/enum/GlobalEnums';
+import { GrnVoucherStatus, ProductionEntriesTypesEnum, PurchaseOrderStatusTypesEnum, UnitTypesEnum } from '../models/enum/GlobalEnums';
 import { getProductQuantityFromLedger, getProductWeightValueFromLedger, getWeightAndQtyFromLedger } from './common.service';
+import { BusinessError } from '../configurations/error';
+import { DynamicCud } from './dynamic-crud.service';
+import InventoryService from './inventory.service';
 
 class VoucherServices {
 
+    private readonly inventoryService: InventoryService;
 
+    constructor() {
+        this.inventoryService = new InventoryService();
+    }
+
+    public async getByFilter(filter: any): Promise<any> {
+        return withConnectionDatabase(async (connection) => {
+            try {
+                const whereClauses: string[] = [];
+                const params: any[] = [];
+
+                if (filter.voucherNumber) {
+                    whereClauses.push('gv.voucher_number LIKE ?');
+                    params.push(`${filter.voucherNumber}%`);
+                }
+
+                if (filter.poNumber) {
+                    whereClauses.push('gv.po_number LIKE ?');
+                    params.push(`${filter.poNumber}%`);
+                }
+
+                if (filter.receiver_name) {
+                    whereClauses.push('gv.receiver_name LIKE ?');
+                    params.push(`${filter.receiver_name}%`);
+                }
+
+                params.push(parseInt(filter?.page, 10) ?? 0);
+                params.push(parseInt(filter?.pageSize, 10) ?? 25);
+
+                const dataQuery = `
+                    SELECT 
+                        gv.voucher_id as voucherId,
+                        gv.voucher_number as voucherNumber,
+                        gv.po_number as poNumber,
+                        gv.receiver_name as receiverName,
+                        gv.receiver_contact as receiverContact,
+                        gv.grn_date as grnDate,
+                        gv.total as total,
+                        gv.created_on as createdOn,
+                        "Issued" as status
+                    FROM
+                        grn_voucher gv
+                    ${whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : ''}
+                    ORDER BY gv.created_on DESC
+                    LIMIT ?, ?;
+                `;
+
+                console.log('dataQuery:', dataQuery);
+                console.log('params:', params);
+                const [dataResult]: any = await connection.query(dataQuery, params);
+
+                const countQuery = `
+                    SELECT 
+                        COUNT(gv.voucher_id) as total
+                    FROM
+                        grn_voucher gv
+                    ${whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : ''}
+                `;
+                const [countResult]: any = await connection.query(countQuery, params);
+
+                return { totalRecords: countResult[0].total, data: dataResult };
+            } finally {
+                connection.release();
+            }
+        });
+    }
+
+    public async cancelGrn(param: any): Promise<void> {
+        if (!param?.id) {
+            throw new BusinessError(400, 'GRN ID is required');
+        }
+
+        await withConnectionDatabase(async (connection) => {
+            try {
+                connection.beginTransaction();
+                await DynamicCud.update('grn_voucher', param.id, 'voucher_id', { status: GrnVoucherStatus.Cancelled }, connection);
+                const [rows]: any[] = await connection.query(`
+                        SELECT
+                            gvli.product_id,
+                            gvli.quantity,
+                            gvli.weight
+                        FROM
+                            grn_voucher_line_items gvli
+                        WHERE
+                            gvli.voucher_id = ?
+                    `, [param.id]);
+                for (const row of rows) {
+                    await this.inventoryService.updateInventory({
+                        productId: row.product_id,
+                        quantity: parseFloat(row.quantity) * -1,
+                        weight: parseFloat(row.weight) * -1,
+                        actionType: ProductionEntriesTypesEnum.CancelGRN,
+                        contextId: param.id,
+                    }, connection);
+                    const [productRow]: any[] = await connection.query(`
+                        SELECT
+                            remaining_quantity,
+                            remaining_weight
+                        FROM
+                            products
+                        WHERE
+                            productid = ?
+                    `, [row.product_id]);
+
+                    const remainingQuantity = parseFloat(productRow[0].remaining_quantity) + parseFloat(row.quantity);
+                    const remainingWeight = parseFloat(productRow[0].remaining_weight) + parseFloat(row.weight);
+                    await DynamicCud.update('products', row.product_id, 'productid', {
+                        remaining_quantity: remainingQuantity,
+                        remaining_weight: remainingWeight,
+                    }, connection);
+                }
+                await connection.commit();
+            } catch (error) {
+                await connection.rollback();
+                throw error;
+            } finally {
+                connection.release();
+            }
+        });
+    }
 
     public async getPurchaseOrderDetailsForGrnVoucherApi(purchase_order_id: number): Promise<any> {
 
@@ -131,9 +254,9 @@ class VoucherServices {
         const connection = await connectionPool.getConnection();
 
         try {
-          
-             // Begin the transaction
-             await connection.beginTransaction();
+
+            // Begin the transaction
+            await connection.beginTransaction();
 
             //--Insert into grn_voucher table
             const columnsGrnVoucher: any = {
@@ -245,18 +368,18 @@ class VoucherServices {
                 await dynamicDataUpdateServiceWithConnection('grn_voucher', 'voucher_id', voucher_id, columnsOrderUpdate, connection);
             }
 
-             //--Commit the transaction if all inserts/updates are successful
-             await connection.commit();
+            //--Commit the transaction if all inserts/updates are successful
+            await connection.commit();
 
 
         } catch (error) {
             console.error('error while creating grn:', error);
 
-             //--Rollback the transaction on error
-             await connection.rollback();
+            //--Rollback the transaction on error
+            await connection.rollback();
 
             throw error;
-        }finally {
+        } finally {
             if (connection) {
                 if (typeof connection.release === 'function') {
                     await connection.release();
@@ -342,7 +465,7 @@ class VoucherServices {
                             from inventory_units_info MTBL
                             left join units UNT on UNT.unit_id = MTBL.unit_id
                             WHERE MTBL.productid = ${element.product_id} `);
-                        
+
                         const resultUnitInfoArray: any = resultUnitInfo;
                         element.inventory_units_info = resultUnitInfoArray;
 

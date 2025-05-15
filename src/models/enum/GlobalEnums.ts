@@ -25,6 +25,7 @@ export const BusinessPartnerTypesEnum : any = {
     NewGRN = "NewGRN",
     NewProductionEntry = "NewProductionEntry",
     EditProductionEntry = "EditProductionEntry",
+    CancelGRN = "CancelGRN",
     DirectReceive = "DirectReceive",
   }
 
@@ -37,6 +38,11 @@ export const BusinessPartnerTypesEnum : any = {
   export enum ProductionEntryProductUsageType {
     Consumed = 'Consumed',
     Produced = 'Produced'
+  }
+
+  export enum GrnVoucherStatus {
+    Issued = "Issued",
+    Cancelled = "Cancelled",
   }
   
 

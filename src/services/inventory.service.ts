@@ -416,17 +416,17 @@ class InventoryService {
     public async getStockReport(filter: any) {
         return withConnectionDatabase(async (connection) => {
             const whereClauses: string[] = [];
-                const params: any[] = [];
+            const params: any[] = [];
 
-                if (filter.source) {
-                    whereClauses.push('p.source = ?');
-                    params.push(filter.source);
-                }
+            if (filter.source) {
+                whereClauses.push('p.source = ?');
+                params.push(filter.source);
+            }
 
-                if (filter.type) {
-                    whereClauses.push('p.unit_type = ?');
-                    params.push(filter.type);
-                }
+            if (filter.type) {
+                whereClauses.push('p.unit_type = ?');
+                params.push(filter.type);
+            }
             try {
                 const [results]: any = await connection.query(`
                     SELECT 
@@ -456,6 +456,47 @@ class InventoryService {
                 connection.release();
             }
         });
+    }
+
+    public async updateInventory(data: { productId: number, weight: number, quantity: number, actionType: ProductionEntriesTypesEnum, contextId: number }, connection: PoolConnection): Promise<void> {
+        const actionForeignKeyMap = {
+            [ProductionEntriesTypesEnum.NewProductEntry]: { table: 'products', foreignKey: 'productid' },
+            [ProductionEntriesTypesEnum.NewGRN]: { table: 'grn_voucher', foreignKey: 'voucher_id' },
+            [ProductionEntriesTypesEnum.NewProductionEntry]: { table: 'production_entry_id', foreignKey: 'production_entry_product' },
+            [ProductionEntriesTypesEnum.EditProductionEntry]: { table: 'production_entry_id', foreignKey: 'production_entry_product' },
+            [ProductionEntriesTypesEnum.CancelGRN]: { table: 'grn_voucher', foreignKey: 'voucher_id' },
+            [ProductionEntriesTypesEnum.DirectReceive]: { table: 'products', foreignKey: 'productid' },
+        }
+
+        const { table, foreignKey } = actionForeignKeyMap[data.actionType];
+        const inventoryLedgerTableValue = {
+            productid: data.productId,
+            foreign_key_table_name: table,
+            foreign_key_name: foreignKey,
+            foreign_key_value: data.contextId,
+            quantity: data.quantity,
+            weight_quantity_value: data.weight,
+            action_type: data.actionType,
+            created_at: new Date()
+        }
+        await DynamicCud.insert('inventory_ledger', inventoryLedgerTableValue, connection);
+
+
+        const [inventoryLedgerResult]: any = await connection.query(`
+                SELECT
+                    productid as productId,
+                    sum(weight_quantity_value) as weight,
+                    sum(quantity) as quantity
+                FROM
+                    inventory_ledger
+                WHERE
+                    productid = ?;
+            `, [data.productId]);
+        const productTableValue = {
+            stockquantity: parseFloat(inventoryLedgerResult[0].quantity),
+            weight_value: parseFloat(inventoryLedgerResult[0].weight),
+        };
+        await DynamicCud.update('products', inventoryLedgerResult[0].productId, 'productid', productTableValue, connection);
     }
 
     // To be deprecated
