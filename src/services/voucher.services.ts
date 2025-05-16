@@ -54,7 +54,7 @@ class VoucherServices {
                         gv.grn_date as grnDate,
                         gv.total as total,
                         gv.created_on as createdOn,
-                        "Issued" as status
+                        gv.status as status
                     FROM
                         grn_voucher gv
                     ${whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : ''}
@@ -90,8 +90,20 @@ class VoucherServices {
         await withConnectionDatabase(async (connection) => {
             try {
                 connection.beginTransaction();
-                await DynamicCud.update('grn_voucher', param.id, 'voucher_id', { status: GrnVoucherStatus.Cancelled }, connection);
-                const [rows]: any[] = await connection.query(`
+
+                const [gvRows]: any[] = await connection.query(`
+                        SELECT
+                            gv.status
+                        FROM
+                            grn_voucher gv
+                        WHERE
+                            gv.voucher_id = ?
+                    `, [param.id]);
+                if (gvRows?.[0]?.status === GrnVoucherStatus.Cancelled) {
+                    throw new BusinessError(400, 'GRN is already cancelled');
+                }
+
+                const [gvliRows]: any[] = await connection.query(`
                         SELECT
                             gvli.product_id,
                             gvli.quantity,
@@ -101,7 +113,8 @@ class VoucherServices {
                         WHERE
                             gvli.voucher_id = ?
                     `, [param.id]);
-                for (const row of rows) {
+
+                for (const row of gvliRows) {
                     await this.inventoryService.updateInventory({
                         productId: row.product_id,
                         quantity: parseFloat(row.quantity) * -1,
@@ -126,6 +139,9 @@ class VoucherServices {
                         remaining_weight: remainingWeight,
                     }, connection);
                 }
+
+                await DynamicCud.update('grn_voucher', param.id, 'voucher_id', { status: GrnVoucherStatus.Cancelled }, connection);
+                
                 await connection.commit();
             } catch (error) {
                 await connection.rollback();
