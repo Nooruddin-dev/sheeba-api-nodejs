@@ -463,7 +463,7 @@ class InventoryService {
             [ProductionEntriesTypesEnum.NewProductEntry]: { table: 'products', foreignKey: 'productid' },
             [ProductionEntriesTypesEnum.NewGRN]: { table: 'grn_voucher', foreignKey: 'voucher_id' },
             [ProductionEntriesTypesEnum.NewProductionEntry]: { table: 'production_entry_id', foreignKey: 'production_entry_product' },
-            [ProductionEntriesTypesEnum.EditProductionEntry]: { table: 'production_entry_id', foreignKey: 'production_entry_product' },
+            [ProductionEntriesTypesEnum.DeleteProductionEntry]: { table: 'production_entry_id', foreignKey: 'production_entry_product' },
             [ProductionEntriesTypesEnum.CancelGRN]: { table: 'grn_voucher', foreignKey: 'voucher_id' },
             [ProductionEntriesTypesEnum.DirectReceive]: { table: 'products', foreignKey: 'productid' },
         }

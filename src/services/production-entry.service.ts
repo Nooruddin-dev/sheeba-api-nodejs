@@ -2,8 +2,16 @@ import { PoolConnection } from "mysql2/promise";
 import { withConnectionDatabase } from "../configurations/db";
 import { ProductionEntriesTypesEnum } from "../models/enum/GlobalEnums";
 import { DynamicCud } from "./dynamic-crud.service";
+import InventoryService from "./inventory.service";
 
 export class ProductionEntryService {
+
+    private readonly inventoryService: InventoryService;
+
+    constructor() {
+        this.inventoryService = new InventoryService();
+    }
+
     public async create(payload: any, user: any): Promise<any> {
         return withConnectionDatabase(async (connection) => {
             try {
@@ -21,6 +29,53 @@ export class ProductionEntryService {
                 await connection.commit();
 
                 return { message: 'Production entry created successfully' };
+            } catch (error) {
+                await connection.rollback();
+                throw error;
+            } finally {
+                connection.release();
+            }
+        });
+    }
+
+    public async delete(id: string): Promise<any> {
+        return withConnectionDatabase(async (connection) => {
+            try {
+                await connection.beginTransaction();
+
+                const [ilRows]: any[] = await connection.query(`
+                    SELECT
+                        il.quantity as quantity,
+                        il.weight_quantity_value as weight,
+                        il.productid as productId
+                    FROM
+                        inventory_ledger il
+                    WHERE
+                        foreign_key_table_name = 'production_entry_product'
+                        AND foreign_key_name = 'production_entry_id'
+                        AND foreign_key_value = ?;
+                `, [id]);
+
+                await connection.execute(`
+                        DELETE FROM job_production_entries jpe
+                        WHERE jpe.production_entry_id = ?;
+                    `, [id]);
+
+                // Update inventory
+                if (!ilRows[0].length) {
+                    const { productId, quantity, weight } = ilRows[0];
+
+                    this.inventoryService.updateInventory({
+                        productId: productId,
+                        quantity: parseFloat(quantity) * -1,
+                        weight: parseFloat(weight) * -1,
+                        actionType: ProductionEntriesTypesEnum.DeleteProductionEntry,
+                        contextId: parseInt(id, 10),
+                    }, connection);
+                }
+
+                await connection.commit();
+                return { message: 'Production entry deleted successfully' };
             } catch (error) {
                 await connection.rollback();
                 throw error;
@@ -57,6 +112,7 @@ export class ProductionEntryService {
 
                 const dataQuery = `
                     SELECT 
+                        pe.production_entry_id as id,
                         jc.job_card_no as jobCardNo,
                         m.machine_name as machineName,
                         p.product_name as productName,
