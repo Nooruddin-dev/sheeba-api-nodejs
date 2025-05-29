@@ -24,7 +24,7 @@ export const BusinessPartnerTypesEnum : any = {
     NewProductEntry = "NewProductEntry",
     NewGRN = "NewGRN",
     NewProductionEntry = "NewProductionEntry",
-    DeleteProductionEntry = "DeleteProductionEntry",
+    CancelProductionEntry = "CancelProductionEntry",
     CancelGRN = "CancelGRN",
     DirectReceive = "DirectReceive",
   }

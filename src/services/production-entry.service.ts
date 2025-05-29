@@ -38,7 +38,7 @@ export class ProductionEntryService {
         });
     }
 
-    public async delete(id: string): Promise<any> {
+    public async cancel(id: string): Promise<any> {
         return withConnectionDatabase(async (connection) => {
             try {
                 await connection.beginTransaction();
@@ -57,7 +57,8 @@ export class ProductionEntryService {
                 `, [id]);
 
                 await connection.execute(`
-                        DELETE FROM job_production_entries jpe
+                        UPDATE job_production_entries jpe
+                        SET jpe.cancelled = 1
                         WHERE jpe.production_entry_id = ?;
                     `, [id]);
 
@@ -69,13 +70,13 @@ export class ProductionEntryService {
                         productId: productId,
                         quantity: parseFloat(quantity) * -1,
                         weight: parseFloat(weight) * -1,
-                        actionType: ProductionEntriesTypesEnum.DeleteProductionEntry,
+                        actionType: ProductionEntriesTypesEnum.CancelProductionEntry,
                         contextId: parseInt(id, 10),
                     }, connection);
                 }
 
                 await connection.commit();
-                return { message: 'Production entry deleted successfully' };
+                return { message: 'Production entry cancelled successfully' };
             } catch (error) {
                 await connection.rollback();
                 throw error;

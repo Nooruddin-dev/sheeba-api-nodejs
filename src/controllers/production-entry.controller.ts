@@ -31,9 +31,9 @@ export class ProductionEntryController {
         }
     }
 
-    public deleteProductionEntry = async (req: Request, res: Response): Promise<void> => {
+    public cancelProductionEntry = async (req: Request, res: Response): Promise<void> => {
         try {
-            const result = await this.productionEntryService.delete(req.params.id);
+            const result = await this.productionEntryService.cancel(req.params.id);
             res.status(200).json(result);
         }
         catch (error) {
