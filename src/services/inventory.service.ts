@@ -478,7 +478,7 @@ class InventoryService {
             weight_quantity_value: data.weight,
             action_type: data.actionType,
             created_at: new Date()
-        }
+        };
         await DynamicCud.insert('inventory_ledger', inventoryLedgerTableValue, connection);
 
 

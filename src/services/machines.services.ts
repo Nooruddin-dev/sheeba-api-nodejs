@@ -70,7 +70,8 @@ export default class MachinesService {
                                         ON
                         mt.machine_type_id = m.machine_type_id
                     WHERE
-                        jpe.created_on BETWEEN ? AND ?
+                        jpe.cancelled = 0
+                        AND jpe.created_on BETWEEN ? AND ?
                         AND (jpe.job_card_product_id IS NULL
                             OR jpe.job_card_product_id IN (
                             SELECT

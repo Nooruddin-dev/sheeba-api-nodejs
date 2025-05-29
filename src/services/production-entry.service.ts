@@ -63,9 +63,8 @@ export class ProductionEntryService {
                     `, [id]);
 
                 // Update inventory
-                if (!ilRows[0].length) {
+                if (ilRows?.length) {
                     const { productId, quantity, weight } = ilRows[0];
-
                     this.inventoryService.updateInventory({
                         productId: productId,
                         quantity: parseFloat(quantity) * -1,
@@ -123,7 +122,8 @@ export class ProductionEntryService {
                         pe.waste_value as wasteWeight,
                         pe.net_value as netWeight,
                         pe.weight_value as quantity,
-                        pe.tare_core as tareWeight
+                        pe.tare_core as tareWeight,
+                        pe.cancelled as cancelled
                     FROM
                         job_production_entries pe
                     JOIN

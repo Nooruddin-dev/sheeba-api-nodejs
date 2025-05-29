@@ -87,7 +87,8 @@ export default class JobCardService {
                                 ON
                     mt.machine_type_id = m.machine_type_id
                 WHERE
-                    jcm.job_card_no = ?
+                    jpe.cancelled = 0
+                    AND jcm.job_card_no = ?
                     AND (jpe.job_card_product_id IS NULL
                         OR jpe.job_card_product_id IN (
                         SELECT
