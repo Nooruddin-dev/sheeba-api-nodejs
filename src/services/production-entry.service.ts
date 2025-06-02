@@ -3,6 +3,8 @@ import { withConnectionDatabase } from "../configurations/db";
 import { ProductionEntriesTypesEnum } from "../models/enum/GlobalEnums";
 import { DynamicCud } from "./dynamic-crud.service";
 import InventoryService from "./inventory.service";
+import { BusinessError } from "../configurations/error";
+import { randomUUID } from "crypto";
 
 export class ProductionEntryService {
 
@@ -17,11 +19,12 @@ export class ProductionEntryService {
             try {
                 await connection.beginTransaction();
 
+                const groupId = randomUUID();
                 const consumedMaterialsPromises = payload.consumedMaterials.map(async (material: any) => {
-                    return this.createWithConnection(payload, material, user, false, connection);
+                    return this.createWithConnection(groupId, payload, material, user, false, connection);
                 });
                 const producedMaterialsPromises = payload.producedMaterials.map((material: any) => {
-                    return this.createWithConnection(payload, material, user, true, connection);
+                    return this.createWithConnection(groupId, payload, material, user, true, connection);
                 });
 
                 await Promise.all([...consumedMaterialsPromises, ...producedMaterialsPromises]);
@@ -43,7 +46,34 @@ export class ProductionEntryService {
             try {
                 await connection.beginTransaction();
 
-                const [ilRows]: any[] = await connection.query(`
+                const [peGroupIdRows]: any[] = await connection.query(`
+                    SELECT
+                        pe.group_id as groupId
+                    FROM
+                        job_production_entries pe
+                    WHERE
+                        pe.production_entry_id = ?;
+                `, [id]);
+
+                if (!peGroupIdRows?.length) {
+                    throw new BusinessError(400, 'Invalid production entry ID');
+                }
+
+                // Get ids of entries by groupId
+                const groupId = peGroupIdRows[0].groupId;
+                const [peIdRows]: any[] = await connection.query(`
+                    SELECT
+                        production_entry_id as id
+                    FROM
+                        job_production_entries
+                    WHERE
+                        group_id = ?;
+                `, [groupId]);
+
+                // loop through each production entry id and cancel it
+                for (const peIdRow of peIdRows) {
+                    console.log('Cancelling production entry with ID:', peIdRow);
+                    const [ilRows]: any[] = await connection.query(`
                     SELECT
                         il.quantity as quantity,
                         il.weight_quantity_value as weight,
@@ -54,28 +84,30 @@ export class ProductionEntryService {
                         foreign_key_table_name = 'production_entry_product'
                         AND foreign_key_name = 'production_entry_id'
                         AND foreign_key_value = ?;
-                `, [id]);
+                `, [peIdRow.id]);
 
-                await connection.execute(`
+                    await connection.execute(`
                         UPDATE job_production_entries jpe
                         SET jpe.cancelled = 1
                         WHERE jpe.production_entry_id = ?;
-                    `, [id]);
+                    `, [peIdRow.id]);
 
-                // Update inventory
-                if (ilRows?.length) {
-                    const { productId, quantity, weight } = ilRows[0];
-                    this.inventoryService.updateInventory({
-                        productId: productId,
-                        quantity: parseFloat(quantity) * -1,
-                        weight: parseFloat(weight) * -1,
-                        actionType: ProductionEntriesTypesEnum.CancelProductionEntry,
-                        contextId: parseInt(id, 10),
-                    }, connection);
+                    // Update inventory
+                    if (ilRows?.length) {
+                        const { productId, quantity, weight } = ilRows[0];
+                        this.inventoryService.updateInventory({
+                            productId: productId,
+                            quantity: parseFloat(quantity) * -1,
+                            weight: parseFloat(weight) * -1,
+                            actionType: ProductionEntriesTypesEnum.CancelProductionEntry,
+                            contextId: parseInt(peIdRow.id, 10),
+                        }, connection);
+                    }
                 }
 
+
                 await connection.commit();
-                return { message: 'Production entry cancelled successfully' };
+                return { message: `Total ${peIdRows.length} entries cancelled successfully` };
             } catch (error) {
                 await connection.rollback();
                 throw error;
@@ -112,6 +144,7 @@ export class ProductionEntryService {
 
                 const dataQuery = `
                     SELECT 
+                        pe.group_id as groupId,
                         pe.production_entry_id as id,
                         jc.job_card_no as jobCardNo,
                         m.machine_name as machineName,
@@ -169,9 +202,10 @@ export class ProductionEntryService {
         });
     }
 
-    private async createWithConnection(payload: any, material: any, user: any, isProduced: boolean, connection: PoolConnection): Promise<void> {
+    private async createWithConnection(groupId: string, payload: any, material: any, user: any, isProduced: boolean, connection: PoolConnection): Promise<void> {
         // Create entry
         const jobProductionEntryTableValue = {
+            group_id: groupId,
             job_card_id: payload.jobCardId,
             machine_id: payload.machineId,
             job_card_product_id: material.id,
