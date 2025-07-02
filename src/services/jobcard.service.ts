@@ -1,13 +1,12 @@
-import { Pool } from 'mysql2/promise';
 import { connectionPool, withConnectionDatabase } from '../configurations/db';
 import { stringIsNullOrWhiteSpace } from '../utils/commonHelpers/ValidationHelper';
 import { ServiceResponseInterface } from '../models/common/ServiceResponseInterface';
 import { IJobCardRequestForm } from '../models/jobCardManagement/IJobCardRequestForm';
-import { dynamicDataGetByAnyColumnService, dynamicDataGetService, dynamicDataGetServiceWithConnection, dynamicDataInsertService, dynamicDataInsertServiceNew, dynamicDataUpdateService, dynamicDataUpdateServiceWithConnection } from './dynamic.service';
+import { dynamicDataGetServiceWithConnection, dynamicDataInsertServiceNew, dynamicDataUpdateServiceWithConnection } from './dynamic.service';
 import { JobCardStatusEnum } from '../models/jobCardManagement/IJobCardStatus';
 import { IJobProductionEntryForm } from '../models/jobCardManagement/IJobProductionEntryForm';
 import { ProductionEntriesTypesEnum, ProductSourceEnum } from '../models/enum/GlobalEnums';
-import { getProductQuantityFromLedger, getProductWeightValueFromLedger, getWeightAndQtyFromLedger } from './common.service';
+import { getWeightAndQtyFromLedger } from './common.service';
 import { IJobCardDispatchInfoForm } from '../models/jobCardManagement/IJobCardDispatchInfoForm';
 import InventoryService from './inventory.service';
 import { BusinessError } from '../configurations/error';
@@ -305,78 +304,37 @@ export default class JobCardService {
 
                 //-- insert/update into job card products
                 if (formData.jobCardAllProducts && formData.jobCardAllProducts.length > 0) {
-
+                    await connection.execute(`DELETE FROM job_card_products WHERE job_card_id = ?`, [formData.job_card_id]);
                     for (const element of formData.jobCardAllProducts) {
-
-                        //--get job_card_products by id
-                        const job_product_data = await dynamicDataGetServiceWithConnection('job_card_products', 'job_card_product_id', element.job_card_product_id, connection);
-                        if (job_product_data?.data && job_product_data?.data != null) {
-                            const jobCardProductRow = job_product_data?.data;
-
-                            const columnsJobCardProductsUpdate: any = {
-                                product_id: element.product_id,
-                                product_code: element.product_code,
-                            }
-
-                            const responseProductInfo = await dynamicDataUpdateServiceWithConnection('job_card_products', 'job_card_product_id', jobCardProductRow.job_card_product_id, columnsJobCardProductsUpdate, connection);
-
-                        } else {
-                            const columnsJobCardProducts: any = {
-                                job_card_id: formData.job_card_id,
-                                product_id: element.product_id,
-                                product_code: element.product_code,
-
-                            }
-                            var responseOrderItem = await dynamicDataInsertServiceNew('job_card_products', 'job_card_product_id',
-                                null, true, columnsJobCardProducts, connection);
+                        const columnsJobCardProducts: any = {
+                            job_card_id: formData.job_card_id,
+                            product_id: element.product_id,
+                            product_code: element.product_code,
 
                         }
-
-
+                        await dynamicDataInsertServiceNew('job_card_products', 'job_card_product_id',
+                            null, true, columnsJobCardProducts, connection);
                     }
-
+                } else {
+                    await connection.execute(`DELETE FROM job_card_products WHERE job_card_id = ?`, [formData.job_card_id]);
                 }
 
                 //-- insert/update into 'job_card_dispatch_info'
                 if (formData.job_card_dispatch_info && formData.job_card_dispatch_info.length > 0) {
-
+                    await connection.execute(`DELETE FROM job_card_dispatch_info WHERE job_card_id = ?`, [formData.job_card_id]);
                     for (const element of formData.job_card_dispatch_info) {
-
-                        //--get job_card_products by id
-                        const job_dispatch_data = await dynamicDataGetServiceWithConnection('job_card_dispatch_info', 'dispatch_info_id', element.dispatch_info_id, connection);
-                        if (job_dispatch_data?.data && job_dispatch_data?.data != null) {
-                            const jobDispatchRow = job_dispatch_data?.data;
-
-                            const columnsJobCardDispatchInfoUpdate: any = {
-                                dispatch_place: element.dispatch_place,
-                                dispatch_weight_quantity: element.dispatch_weight_quantity,
-                            }
-
-                            const responseDispatchInfo = await dynamicDataUpdateServiceWithConnection('job_card_dispatch_info', 'dispatch_info_id', jobDispatchRow.dispatch_info_id, columnsJobCardDispatchInfoUpdate, connection);
-
-                        } else {
                             const columnsJobCardDispatchInfoInsert: any = {
                                 job_card_id: formData.job_card_id,
                                 dispatch_place: element.dispatch_place,
                                 dispatch_weight_quantity: element.dispatch_weight_quantity,
 
                             }
-                            const responseDispatchInfo = await dynamicDataInsertServiceNew('job_card_dispatch_info', 'job_card_dispatch_info_idproduct_id',
+                            await dynamicDataInsertServiceNew('job_card_dispatch_info', 'job_card_dispatch_info_id',
                                 null, true, columnsJobCardDispatchInfoInsert, connection);
-
-                        }
-
-
                     }
 
                 }
-
-
-
             } else {
-
-
-
                 //--Insert into job_cards_master table
                 let jobCardMasterTableMainData = {
                     tableName: 'job_cards_master',
@@ -384,8 +342,6 @@ export default class JobCardService {
                     primaryKeyValue: null,
                     isAutoIncremented: true
                 }
-
-
 
                 const columnsJobCardForm: any = {
                     job_card_no: "",   //--formated auto number like : 'JC000001'
@@ -418,9 +374,6 @@ export default class JobCardService {
                     created_by: formData.createByUserId,
                     official: formData.official,
                 };
-
-
-
 
                 responseJobCardInsert = await dynamicDataInsertServiceNew(jobCardMasterTableMainData.tableName, jobCardMasterTableMainData.primaryKeyName, jobCardMasterTableMainData.primaryKeyValue,
                     jobCardMasterTableMainData.isAutoIncremented, columnsJobCardForm, connection);
@@ -980,7 +933,7 @@ export default class JobCardService {
                 let card_dispatch_no = 'DN';;
                 if (formData.show_company_detail == true) {
                     const [taxChallanResult]: any = await connection.query(`SELECT COUNT(show_company_detail) as count FROM job_card_dispatch_data WHERE show_company_detail = 1`);
-                    const nextNumber = parseInt(taxChallanResult[0].count ?? 0, 10) + 3; 
+                    const nextNumber = parseInt(taxChallanResult[0].count ?? 0, 10) + 3;
                     card_dispatch_no = 'CH' + nextNumber.toString().padStart(7, '0');
                 } else {
                     const [nonTaxChallanResult]: any = await connection.query(`SELECT COUNT(show_company_detail) as count FROM job_card_dispatch_data WHERE show_company_detail = 0`);
