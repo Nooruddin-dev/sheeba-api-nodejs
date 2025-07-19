@@ -18,15 +18,16 @@ export const sendEmailFunc = async (to: string, subject: string, html: any) => {
     const mailOptions = {
         from: EmailConfiguration.From, // sender address
         to: to, // list of receivers
+        cc: "sheebaprinter@gmail.com",
         subject: subject, // Subject line
         html: html // HTML body
     };
 
     try {
-        const info = await transporter.sendMail(mailOptions);
-        console.log('Message sent: %s', info.messageId);
+        await transporter.sendMail(mailOptions);
+        console.log('Email sent successfully to %s from %s with subject %s', to, EmailConfiguration.From, subject);
     } catch (error) {
-        console.error('Error sending email:', error);
+        console.log('Error sending email to %s from %s with subject %s', to, EmailConfiguration.From, subject);
         throw error;
     }
 };
