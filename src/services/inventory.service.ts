@@ -113,15 +113,17 @@ class InventoryService {
         });
     }
 
-    public async delete(id: any, user: any): Promise<any> {
-        withConnectionDatabase(async (connection: PoolConnection) => {
+    public async inactive(id: any, user: any): Promise<any> {
+        return withConnectionDatabase(async (connection: PoolConnection) => {
             try {
                 const productsTableValues = {
-                    is_active: false,
+                    is_active: 0,
                     updated_on: new Date(),
                     updated_by: user.id,
                 }
                 await DynamicCud.update('products', id, 'productid', productsTableValues, connection);
+                return { message: 'Inactivated successfully' };
+
             } finally {
                 connection.release();
             }

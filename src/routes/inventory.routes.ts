@@ -18,9 +18,9 @@ inventoryRoutes.get('/get-units-list', inventoryController.getUnitsList);
 inventoryRoutes.get('/auto-complete', auth, inventoryController.autoComplete);
 inventoryRoutes.put('/', auth, inventoryController.create);
 inventoryRoutes.patch('/:id', auth, inventoryController.update);
-inventoryRoutes.delete('/:id', auth, inventoryController.delete);
 inventoryRoutes.get('/:id', auth, inventoryController.getById);
 inventoryRoutes.put('/:id/stock', auth, inventoryController.addStock);
+inventoryRoutes.patch('/:id/inactive', auth, inventoryController.inactive);
 inventoryRoutes.get('/', auth, inventoryController.get);
 
 export default inventoryRoutes;

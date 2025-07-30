@@ -48,10 +48,10 @@ export default class InventoryController {
         }
     }
 
-    public delete = async (req: Request, res: Response): Promise<void> => {
+    public inactive = async (req: Request, res: Response): Promise<void> => {
         try {
-            await this.inventoryService.delete(req.body, (req as AuthRequest).user);
-            res.status(200).json({ message: 'Inventory deleted successfully' });
+            const result = await this.inventoryService.inactive(req.params.id, (req as AuthRequest).user);
+            res.status(200).json(result);
         }
         catch (error) {
             HandleError(res, error);
