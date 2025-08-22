@@ -46,16 +46,67 @@ export default class JobCardService {
     }
 
     public async getJobSummaryReport(filter: any): Promise<any> {
-        if (!filter?.jobCardNo) {
-            throw new BusinessError(400, 'Job Card No is required');
+        if (!filter?.jobCardNo && !filter?.startJobCardNo) {
+            throw new BusinessError(400, 'Either job card number or job card range is required');
         }
 
-        const data: { machines: any[], dispatches: any[] } = { machines: [], dispatches: [] };
+        if ((filter?.startJobCardNo && !filter?.endJobCardNo) || (filter?.endJobCardNo && !filter?.startJobCardNo)) {
+            throw new BusinessError(400, 'Incomplete job card number range');
+        }
+
+        const jobCardNumbers: string[] = [];
+        if (filter?.startJobCardNo && filter?.endJobCardNo) {
+            const start = Number(filter.startJobCardNo.replace('JC', ''));
+            const end = Number(filter.endJobCardNo.replace('JC', ''));
+
+            const diff = end - start;
+            if (diff < 0 || diff === 0) {
+                throw new BusinessError(400, 'Invalid job card number range');
+            }
+
+            if (diff > 50) {
+                throw new BusinessError(400, 'Job card number range cannot exceed 50');
+            }
+
+            for (let i = start; i <= end; i++) {
+                jobCardNumbers.push(`JC${i.toString().padStart(7, '0')}`);
+            }
+        }
+
+        const data: {
+            id: number,
+            jobCardNo: string,
+            companyName: string,
+            productName: string,
+            machines: any[],
+            dispatches: any[]
+        }[] = [];
 
         const result = await withConnectionDatabase(async (connection) => {
             try {
+                const [jcResult]: any = await connection.query(`
+                    SELECT
+                        jc.job_card_id as id,
+                        jc.job_card_no as jobCardNo,
+                        jc.company_name as companyName,
+                        jc.product_name as productName
+                    FROM
+                        job_cards_master jc
+                    WHERE
+                        jc.job_card_no IN (?)
+                `, jobCardNumbers.length > 0 ? [jobCardNumbers] : [filter.jobCardNo]);
+
+                if (!jcResult?.length) {
+                    return {
+                        jobCards: [],
+                        machines: [],
+                        dispatches: []
+                    }
+                }
+
                 const [jpeResult]: any = await connection.query(`
                 SELECT
+                    jcm.job_card_id as jobCardId,
                     m.machine_id as machineId,
                     m.machine_name as machineName,
                     mt.machine_type_id as machineTypeId,
@@ -87,7 +138,7 @@ export default class JobCardService {
                     mt.machine_type_id = m.machine_type_id
                 WHERE
                     jpe.cancelled = 0
-                    AND jcm.job_card_no = ?
+                    AND jcm.job_card_id in (?)
                     AND (jpe.job_card_product_id IS NULL
                         OR jpe.job_card_product_id IN (
                         SELECT
@@ -97,10 +148,11 @@ export default class JobCardService {
                         WHERE
                             p.unit_type = 3
                         ))
-                `, filter.jobCardNo);
+                `, [jcResult.map((item: any) => item.id)]);
 
                 const [dciResult]: any = await connection.query(`
                     SELECT 
+                        jcm.job_card_id as jobCardId,
                         jcdd.card_dispatch_info_id as id,
                         jcdd.created_on as date,
                         dci.quantity,
@@ -117,9 +169,10 @@ export default class JobCardService {
                     ON
                         jcm.job_card_id = jcdd.job_card_id
                     WHERE
-                        jcm.job_card_no = ?;
-                    `, filter.jobCardNo);
+                        jcm.job_card_id in (?);
+                    `, [jcResult.map((item: any) => item.id)]);
                 return {
+                    jobCards: jcResult,
                     machines: jpeResult,
                     dispatches: dciResult
                 }
@@ -128,22 +181,38 @@ export default class JobCardService {
             }
         });
 
-        result.machines.forEach((entry: any) => {
-            const found = data.machines.find((r) => r.machineTypeId === entry.machineTypeId);
-            if (found) {
-                found.entries.push(entry);
-            } else {
-                data.machines.push({
-                    machineId: entry.machineId,
-                    machineName: entry.machineName,
-                    machineTypeId: entry.machineTypeId,
-                    machineTypeName: entry.machineTypeName,
-                    entries: [entry],
-                });
-            }
-        });
+        if (!result?.jobCards?.length) {
+            throw new BusinessError(404, 'No job card(s) found');
+        }
 
-        data.dispatches = result.dispatches;
+        result.jobCards.forEach((jobCard: any) => {
+            const machines: any[] = [];
+            result.machines.forEach((entry: any) => {
+                if (entry.jobCardId == jobCard.id) {
+                    const found = machines.find((r) => r.machineTypeId === entry.machineTypeId);
+                    if (found) {
+                        found.entries.push({ ...entry, jobCardId: undefined });
+                    } else {
+                        machines.push({
+                            machineId: entry.machineId,
+                            machineName: entry.machineName,
+                            machineTypeId: entry.machineTypeId,
+                            machineTypeName: entry.machineTypeName,
+                            entries: [{ ...entry, jobCardId: undefined }],
+                        });
+                    }
+                }
+            });
+
+            data.push({
+                id: jobCard.id,
+                jobCardNo: jobCard.jobCardNo,
+                companyName: jobCard.companyName,
+                productName: jobCard.productName,
+                dispatches: result?.dispatches?.filter((dispatch: any) => dispatch.jobCardId == jobCard.id) || [],
+                machines,
+            });
+        });
 
         return data;
     }
@@ -323,14 +392,14 @@ export default class JobCardService {
                 if (formData.job_card_dispatch_info && formData.job_card_dispatch_info.length > 0) {
                     await connection.execute(`DELETE FROM job_card_dispatch_info WHERE job_card_id = ?`, [formData.job_card_id]);
                     for (const element of formData.job_card_dispatch_info) {
-                            const columnsJobCardDispatchInfoInsert: any = {
-                                job_card_id: formData.job_card_id,
-                                dispatch_place: element.dispatch_place,
-                                dispatch_weight_quantity: element.dispatch_weight_quantity,
+                        const columnsJobCardDispatchInfoInsert: any = {
+                            job_card_id: formData.job_card_id,
+                            dispatch_place: element.dispatch_place,
+                            dispatch_weight_quantity: element.dispatch_weight_quantity,
 
-                            }
-                            await dynamicDataInsertServiceNew('job_card_dispatch_info', 'job_card_dispatch_info_id',
-                                null, true, columnsJobCardDispatchInfoInsert, connection);
+                        }
+                        await dynamicDataInsertServiceNew('job_card_dispatch_info', 'job_card_dispatch_info_id',
+                            null, true, columnsJobCardDispatchInfoInsert, connection);
                     }
 
                 }
