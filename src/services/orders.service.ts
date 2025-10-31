@@ -21,6 +21,80 @@ class OrdersService {
         this.inventoryService = new InventoryService();
     }
 
+
+    public async autoComplete(poNumber: string, statusId: number): Promise<any> {
+        return withConnectionDatabase(async (connection) => {
+            try {
+                const [results]: any = await connection.query(`
+                    SELECT
+                        po.purchase_order_id as id,
+                        po.po_number as poNumber,
+                        po.po_reference as reference
+                    FROM
+                        purchase_orders po
+                    INNER JOIN purchase_order_status_mapping posm
+                    on
+                        po.purchase_order_id = posm.purchase_order_id
+                        and posm.is_active = 1
+                    where
+                        posm.status_id = ?
+                        AND po.po_number LIKE ?
+                    LIMIT 10;
+                `, [statusId, `%${poNumber}%`]);
+                const finalData: any = results;
+                return finalData;
+            } finally {
+                connection.release();
+            }
+        });
+    }
+
+
+    public async getById(id: number): Promise<any> {
+        return withConnectionDatabase(async (connection) => {
+            try {
+                const poItemsQuery: any = connection.query(`
+                SELECT
+                    poi.line_item_id as id,
+                    poi.product_id as productId,
+                    poi.code_sku sku,
+                    poi.item_name as product,
+                    poi.po_rate as cost,
+                    poi.weight as weight,
+                    poi.subtotal,
+                    poi.total,
+                    poi.total_tax
+                FROM
+                    purchase_orders_items poi
+                WHERE
+                    poi.purchase_order_id = ?;
+                `, [id]);
+                const poQuery: any = connection.query(`
+                SELECT
+                    po.purchase_order_id as id,
+                    po.po_number as poNumber,
+                    po.company_name as companyName,
+                    po.order_date as orderDate,
+                    po.order_total as total,
+                    po.order_total_tax as tax,
+                    po.order_total_discount as discount
+                FROM
+                    purchase_orders po
+                WHERE
+                    po.purchase_order_id = ?;
+                `, [id]);
+
+                const [poItemsResult, poResult] = await Promise.all([poItemsQuery, poQuery]);
+                return {
+                    ...poResult[0][0],
+                    items: poItemsResult[0]
+                };
+            } finally {
+                connection.release();
+            }
+        });
+    }
+
     public async getGrnReport(filter: any): Promise<any> {
         if (!filter?.startDate) {
             throw new BusinessError(400, 'Start date is required');

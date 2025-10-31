@@ -5,6 +5,7 @@ import { stringIsNullOrWhiteSpace } from '../utils/commonHelpers/ValidationHelpe
 import { getBusnPartnerIdFromApiHeader } from '../utils/authHelpers/AuthMainHelper';
 import { IPurchaseOrderRequestForm } from '../models/orders/IPurchaseOrderRequestForm';
 import { IPurchaseOrderStatusUpdateRequestForm } from '../models/orders/IPurchaseOrderStatusUpdateRequestForm';
+import { HandleError } from '../configurations/error';
 
 
 class OrdersController {
@@ -12,6 +13,26 @@ class OrdersController {
 
     constructor() {
         this.ordersService = new OrdersService();
+    }
+
+    public autoComplete = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const { poNumber, statusId } = req.query;
+            const result = await this.ordersService.autoComplete(poNumber as string, Number(statusId));
+            res.status(200).json(result);
+        } catch (error) {
+            HandleError(res, error)
+        }
+    }
+
+    public getById = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const { id } = req.params;
+            const result = await this.ordersService.getById(Number(id));
+            res.status(200).json(result);
+        } catch (error) {
+            HandleError(res, error)
+        }
     }
 
     public createPurchaseOrder = async (req: Request, res: Response) => {
