@@ -125,7 +125,32 @@ class GrnService {
                     cost_inclusive: lineItem.costInclusive,
                     total: lineItem.total,
                 }
-                await dynamicDataInsertServiceNew('grn_voucher_line_items', 'id', null, true, grnVoucherItem, connection);
+                const gvli = await dynamicDataInsertServiceNew('grn_voucher_line_items', 'id', null, true, grnVoucherItem, connection);
+
+                await this.inventoryService.updateInventory({
+                    productId: lineItem.productId,
+                    quantity: parseFloat(lineItem.quantity),
+                    weight: parseFloat(lineItem.weight),
+                    actionType: ProductionEntriesTypesEnum.NewGRN,
+                    contextId: Number(gvli.primaryKeyValue),
+                }, connection);
+
+                const [productRow]: any[] = await connection.query(`
+                            SELECT
+                                remaining_quantity,
+                                remaining_weight
+                            FROM
+                                products
+                            WHERE
+                                productid = ?
+                        `, [lineItem.productId]);
+
+                const remainingQuantity = parseFloat(productRow[0].remaining_quantity) + parseFloat(lineItem.quantity);
+                const remainingWeight = parseFloat(productRow[0].remaining_weight) + parseFloat(lineItem.weight);
+                await DynamicCud.update('products', lineItem.productId, 'productid', {
+                    remaining_quantity: remainingQuantity,
+                    remaining_weight: remainingWeight,
+                }, connection);
             }
 
             if (!existingVoucher) {
