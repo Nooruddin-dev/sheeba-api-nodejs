@@ -29,6 +29,7 @@
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
     "mysql2": "^3.9.7",
+    "nodemailer": "^9.0.5",
     "uuid": "^10.0.0"
   }
 }
