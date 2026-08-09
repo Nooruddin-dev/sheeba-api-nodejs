@@ -1,33 +1,51 @@
-// emailService.js
 import nodemailer from 'nodemailer';
 import { EmailConfiguration } from '../configurations/config';
 
-// Create a transporter
-const transporter = nodemailer.createTransport({
-    host: EmailConfiguration.host, // For Gmail
-    port: EmailConfiguration.Port,
-    secure: true, // true for 465, false for other ports
+const getTransporter = () => {
+  const { Host, Port, User, AppPassword } = EmailConfiguration;
+
+  if (!User || !AppPassword) {
+    throw new Error(
+      'Gmail app password is not configured. Set GMAIL_USER and GMAIL_APP_PASSWORD in .env'
+    );
+  }
+
+  return nodemailer.createTransport({
+    host: Host,
+    port: Port,
+    secure: true,
     auth: {
-        user: EmailConfiguration.Username, // Your email
-        pass: EmailConfiguration.Password // Your email password or App Password
-    }
-});
+      user: User,
+      pass: AppPassword,
+    },
+  });
+};
 
-// Function to send email
 export const sendEmailFunc = async (to: string, subject: string, html: any) => {
-    const mailOptions = {
-        from: EmailConfiguration.From, // sender address
-        to: to, // list of receivers
-        cc: "sheebaprinter@gmail.com",
-        subject: subject, // Subject line
-        html: html // HTML body
-    };
+  const mailOptions = {
+    from: EmailConfiguration.From,
+    to,
+    cc: EmailConfiguration.Cc || undefined,
+    subject,
+    html,
+  };
 
-    try {
-        await transporter.sendMail(mailOptions);
-        console.log('Email sent successfully to %s from %s with subject %s', to, EmailConfiguration.From, subject);
-    } catch (error) {
-        console.log('Error sending email to %s from %s with subject %s', to, EmailConfiguration.From, subject);
-        throw error;
-    }
+  try {
+    const transporter = getTransporter();
+    await transporter.sendMail(mailOptions);
+    console.log(
+      'Email sent successfully to %s from %s with subject %s',
+      to,
+      EmailConfiguration.From,
+      subject
+    );
+  } catch (error) {
+    console.log(
+      'Error sending email to %s from %s with subject %s',
+      to,
+      EmailConfiguration.From,
+      subject
+    );
+    throw error;
+  }
 };
